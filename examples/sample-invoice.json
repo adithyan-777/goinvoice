@@ -1,0 +1,37 @@
+{
+  "type": "standard",
+  "series": "FA",
+  "code": "R-2026-011",
+  "issue_date": "2026-11-03",
+  "currency": "EUR",
+  "supplier": {
+    "name": "Acme Consultancy SL",
+    "tax_id": { "country": "ES", "code": "B98602642" },
+    "emails": [
+      { "label": "Billing", "addr": "billing@acme.example" }
+    ],
+    "addresses": [
+      { "lines": ["Calle Mayor 1"], "locality": "Madrid", "post_code": "28001", "country": "ES" }
+    ]
+  },
+  "customer": {
+    "name": "Globex Ibérica SA",
+    "tax_id": { "country": "ES", "code": "A12345674" },
+    "addresses": [
+      { "lines": ["Avenida de la Innovación 42"], "locality": "Madrid", "post_code": "28020", "country": "ES" }
+    ]
+  },
+  "lines": [
+    {
+      "quantity": "10",
+      "item": { "name": "Backend consulting (sprint 42)", "price": "100.00" },
+      "taxes": [{ "cat": "VAT", "rate": "standard" }]
+    },
+    {
+      "quantity": "2",
+      "item": { "name": "Invoice generator license", "price": "250.00" },
+      "discounts": [{ "percent": "10.0%" }],
+      "taxes": [{ "cat": "VAT", "rate": "standard" }]
+    }
+  ]
+}
