@@ -501,7 +501,23 @@ templ ProductForm(p sqlc.Product, errMsg string) {
 		<div class="form-field"><label class="form-label">List price</label><input class="form-input" type="text" name="list" value={ nsStr(p.List) }/></div>
 		<div class="form-field"><label class="form-label">Discount</label><input class="form-input" type="text" name="discount" value={ nsStr(p.Discount) }/></div>
 		<div class="form-field"><label class="form-label">Per quantity</label><input class="form-input" type="text" name="per" value={ nsStr(p.Per) } placeholder="1"/></div>
-		<div class="form-field"><label class="form-label">Unit</label><input class="form-input" type="text" name="unit" value={ nsStr(p.Unit) } placeholder="hour"/></div>
+		<div class="form-field">
+			<label class="form-label">Unit</label>
+			<div class="combo" data-combo>
+				<input class="form-input combo__input" type="text" value={ unitLabel(nsStr(p.Unit)) } placeholder="Search units…" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list"/>
+				<input type="hidden" name="unit" value={ nsStr(p.Unit) }/>
+				<button type="button" class="combo__toggle" tabindex="-1" aria-label="Show units"><i class="bx bx-chevron-down"></i></button>
+				<div class="combo__list" role="listbox" hidden>
+					for _, o := range unitOptions() {
+						<button type="button" class="combo__option" role="option" data-value={ o.Label } data-code={ o.Value } data-id={ o.Value }>
+							<span>{ o.Label }</span>
+							<span class="combo__meta">{ o.Value }</span>
+						</button>
+					}
+					<div class="combo__empty" hidden>No matching units</div>
+				</div>
+			</div>
+		</div>
 
 		<div class="form-actions"><button type="submit" class="btn btn--primary">{ catalogSubmitLabel(p.ID, "product") }</button></div>
 	</form>

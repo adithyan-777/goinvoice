@@ -28,6 +28,7 @@ import (
 	"github.com/invopop/gobl"
 	"github.com/invopop/gobl/bill"
 	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/cbc"
 	"github.com/invopop/gobl/org"
 	"github.com/invopop/gobl/tax"
 
@@ -252,7 +253,7 @@ func (h *Handler) parseDocForm(r *http.Request, kind string) (any, error) {
 			// (unit, description, ref, identities, attributes, images, …)
 			// while keeping the user's edited name/price.
 			if hasProd && prod.Item != nil {
-				if im := itemMapOf(prod.Item); im != nil {
+				if im := itemMapOf(documentItem(prod.Item)); im != nil {
 					if item != "" {
 						im["name"] = item
 					}
@@ -931,6 +932,23 @@ func partyMap(p *org.Party) map[string]any {
 // itemMapOf converts a catalog item to the generic line-item map.
 func itemMapOf(it *org.Item) map[string]any {
 	return jsonMap(it)
+}
+
+// documentItem returns a copy of a catalog item that is safe to embed in a
+// document. Older catalog rows may contain unit/key values that predate GOBL
+// validation; drop the invalid ones rather than blocking the whole invoice.
+func documentItem(it *org.Item) *org.Item {
+	if it == nil {
+		return nil
+	}
+	cp := *it
+	if cp.Unit != "" && !validItemUnit(cp.Unit) {
+		cp.Unit = cbc.KeyEmpty
+	}
+	if cp.Key != "" && !cbc.KeyValidationRegexp.MatchString(cp.Key.String()) {
+		cp.Key = cbc.KeyEmpty
+	}
+	return &cp
 }
 
 func jsonMap(v any) map[string]any {

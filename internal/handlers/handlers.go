@@ -509,6 +509,43 @@ func productConflict(err error) bool {
 
 var errProductRequired = errors.New("ref and name are required")
 
+// uneceUnitPattern matches legacy UN/ECE unit codes, which GOBL accepts and
+// normalizes into the `untdid-unit` extension.
+var uneceUnitPattern = regexp.MustCompile(`^[A-Z0-9]{2,3}$`)
+
+// validItemUnit reports whether u is a GOBL unit key or a legacy UN/ECE code.
+func validItemUnit(u cbc.Key) bool {
+	if u == "" {
+		return true
+	}
+	return org.HasValidUnitKey.Check(u) || uneceUnitPattern.MatchString(u.String())
+}
+
+// unitOptions lists the GOBL units for the product form dropdown.
+func unitOptions() []DocOption {
+	opts := []DocOption{{Value: "", Label: "None"}}
+	for _, d := range org.UnitDefinitions {
+		opts = append(opts, DocOption{
+			Value: d.Key.String(),
+			Label: d.Name.String() + " (" + d.Key.String() + ")",
+		})
+	}
+	return opts
+}
+
+// unitLabel returns the display label for a unit key.
+func unitLabel(key string) string {
+	if key == "" {
+		return ""
+	}
+	for _, o := range unitOptions() {
+		if o.Value == key {
+			return o.Label
+		}
+	}
+	return key
+}
+
 // decodeProduct reads a GOBL org.Item from a JSON body (full shape) or from
 // the flat product form (ref, name, description, pricing, unit, origin).
 func decodeProduct(r *http.Request) (*org.Item, bool, error) {
@@ -574,6 +611,12 @@ func productFromForm(r *http.Request) (*org.Item, error) {
 	}
 	if it.Currency == "" {
 		it.Currency = "EUR"
+	}
+	if it.Unit != "" && !validItemUnit(it.Unit) {
+		return it, fmt.Errorf("unit %q is not a valid GOBL unit key (try unit, item, piece, h, day, kg, m…)", it.Unit)
+	}
+	if it.Key != "" && !cbc.KeyValidationRegexp.MatchString(it.Key.String()) {
+		return it, fmt.Errorf("key %q must be lowercase letters, digits or dashes", it.Key)
 	}
 	return it, nil
 }
