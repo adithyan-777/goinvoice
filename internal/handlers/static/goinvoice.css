@@ -77,6 +77,13 @@
 	margin-top: var(--space-2);
 }
 
+/* Required-field marker on form labels. */
+.form-label--required::after {
+	content: " *";
+	color: var(--danger);
+	font-weight: 600;
+}
+
 /* KPI stat strip on the invoices page. */
 .kpi-grid {
 	display: grid;

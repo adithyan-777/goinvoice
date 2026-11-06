@@ -15,7 +15,7 @@ const (
 	dsNavPayments   = "$nav = 'payments'; @get('/partials/payments')"
 	dsNavStatuses   = "$nav = 'statuses'; @get('/partials/statuses')"
 	dsNavCustomers = "$nav = 'customers'; @get('/partials/customers')"
-	dsNavSuppliers = "$nav = 'suppliers'; @get('/partials/suppliers')"
+	dsNavCompany   = "$nav = 'company'; @get('/partials/company')"
 	dsNavProducts  = "$nav = 'products'; @get('/partials/products')"
 )
 
@@ -149,25 +149,112 @@ templ CustomersPage(rows []sqlc.Customer, errMsg string) {
 	}
 }
 
+// partyIdentityRow renders one repeatable extra-code row.
+templ partyIdentityRow(sfx string, idn PartyIdentityForm) {
+	<div class="doc-form__group" data-repeat>
+		<div class="doc-form__group-title">
+			<span data-repeat-title data-repeat-name="Code">Code</span>
+			<button type="button" class="btn-icon btn-icon--danger" data-repeat-remove title="Remove code" aria-label="Remove code"><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
+		</div>
+		<div class="doc-form__row doc-form__row--refs">
+			<div class="form-field">
+				<label class="form-label">Type</label>
+				<input class="form-input" type="text" name={ "identity_type_" + sfx } value={ idn.Type } placeholder="gst, registration, duns…"/>
+			</div>
+			<div class="form-field">
+				<label class="form-label">Code</label>
+				<input class="form-input" type="text" name={ "identity_code_" + sfx } value={ idn.Code }/>
+			</div>
+			<div class="form-field">
+				<label class="form-label">Description</label>
+				<input class="form-input" type="text" name={ "identity_desc_" + sfx } value={ idn.Description }/>
+			</div>
+		</div>
+	</div>
+}
+
+// partyLogoRow renders one repeatable logo row.
+templ partyLogoRow(sfx string, l PartyLogoForm) {
+	<div class="doc-form__group" data-repeat>
+		<div class="doc-form__group-title">
+			<span data-repeat-title data-repeat-name="Logo">Logo</span>
+			<button type="button" class="btn-icon btn-icon--danger" data-repeat-remove title="Remove logo" aria-label="Remove logo"><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
+		</div>
+		<div class="doc-form__row doc-form__row--refs">
+			<div class="form-field">
+				<label class="form-label">Label</label>
+				<input class="form-input" type="text" name={ "logo_label_" + sfx } value={ l.Label } placeholder="Main"/>
+			</div>
+			<div class="form-field">
+				<label class="form-label">Image URL</label>
+				<input class="form-input" type="url" name={ "logo_url_" + sfx } value={ l.URL } placeholder="https://…"/>
+			</div>
+			<div class="form-field">
+				<label class="form-label">Alt text</label>
+				<input class="form-input" type="text" name={ "logo_alt_" + sfx } value={ l.Alt }/>
+			</div>
+		</div>
+	</div>
+}
+
+// PartyFields renders the shared party inputs used by the customer,
+// supplier and company forms.
+templ PartyFields(f PartyFormData, kind string) {
+	<div class="doc-form__section">Party</div>
+	<div class="form-field form-field--full"><label class="form-label form-label--required">Name</label><input class="form-input" type="text" name="name" value={ f.Name } required/></div>
+	<div class="form-field"><label class="form-label">Label</label><input class="form-input" type="text" name="label" value={ f.Label } placeholder={ kind }/></div>
+	<div class="form-field"><label class="form-label">Alias</label><input class="form-input" type="text" name="alias" value={ f.Alias }/></div>
+
+	<div class="doc-form__section">Tax identity</div>
+	<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ f.TaxCountry } placeholder="ES"/></div>
+	<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ f.TaxCode }/></div>
+	<div class="form-field"><label class="form-label">Tax scheme</label><input class="form-input" type="text" name="tax_scheme" value={ f.TaxScheme } placeholder="VAT"/></div>
+	<div class="form-field"><label class="form-label">Tax type</label><input class="form-input" type="text" name="tax_type" value={ f.TaxType }/></div>
+
+	<div class="doc-form__section">Contact</div>
+	<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ f.Email }/></div>
+	<div class="form-field"><label class="form-label">Phone</label><input class="form-input" type="tel" name="phone" value={ f.Phone }/></div>
+	<div class="form-field form-field--full"><label class="form-label">Website</label><input class="form-input" type="url" name="website" value={ f.Website }/></div>
+
+	<div class="doc-form__section">Address</div>
+	<div class="form-field form-field--full"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ f.Address }/></div>
+	<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ f.Locality }/></div>
+	<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ f.PostCode }/></div>
+	<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ f.Country } placeholder="ES"/></div>
+
+	<div class="doc-form__section">Extra codes</div>
+	<div class="doc-lines" data-repeats data-next-index={ itoa(len(f.Identities)) }>
+		for i, idn := range f.Identities {
+			@partyIdentityRow(itoa(i), idn)
+		}
+		<template data-repeater-template>
+			@partyIdentityRow("__IDX__", PartyIdentityForm{})
+		</template>
+		<div class="form-field">
+			<button type="button" class="btn btn--ghost btn--sm" data-repeater-add><i class="bx bx-plus admin-icon admin-icon--16"></i> Add code</button>
+		</div>
+	</div>
+
+	<div class="doc-form__section">Logos</div>
+	<div class="doc-lines" data-repeats data-next-index={ itoa(len(f.Logos)) }>
+		for i, l := range f.Logos {
+			@partyLogoRow(itoa(i), l)
+		}
+		<template data-repeater-template>
+			@partyLogoRow("__IDX__", PartyLogoForm{})
+		</template>
+		<div class="form-field">
+			<button type="button" class="btn btn--ghost btn--sm" data-repeater-add><i class="bx bx-plus admin-icon admin-icon--16"></i> Add logo</button>
+		</div>
+	</div>
+}
+
 templ CustomerForm(f PartyFormData) {
 	if f.Err != "" {
 		<div class="alert alert--error" role="alert">{ f.Err }</div>
 	}
-	<form method="post" action={ catalogAction("customers", f.ID) } class="form-grid" data-on:submit__prevent={ dsCatalogSubmit("customers", f.ID) }>
-		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ f.Name } required/></div>
-		<div class="form-field"><label class="form-label">Label</label><input class="form-input" type="text" name="label" value={ f.Label } placeholder="Customer"/></div>
-		<div class="form-field"><label class="form-label">Alias</label><input class="form-input" type="text" name="alias" value={ f.Alias }/></div>
-		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ f.TaxCountry } placeholder="ES"/></div>
-		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ f.TaxCode }/></div>
-		<div class="form-field"><label class="form-label">Tax scheme</label><input class="form-input" type="text" name="tax_scheme" value={ f.TaxScheme } placeholder="VAT"/></div>
-		<div class="form-field"><label class="form-label">Tax type</label><input class="form-input" type="text" name="tax_type" value={ f.TaxType }/></div>
-		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ f.Email }/></div>
-		<div class="form-field"><label class="form-label">Phone</label><input class="form-input" type="tel" name="phone" value={ f.Phone }/></div>
-		<div class="form-field"><label class="form-label">Website</label><input class="form-input" type="url" name="website" value={ f.Website }/></div>
-		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ f.Address }/></div>
-		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ f.Locality }/></div>
-		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ f.PostCode }/></div>
-		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ f.Country } placeholder="ES"/></div>
+	<form method="post" action={ catalogAction("customers", f.ID) } class="doc-form" data-on:submit__prevent={ dsCatalogSubmit("customers", f.ID) }>
+		@PartyFields(f, "Customer")
 		<div class="form-actions"><button type="submit" class="btn btn--primary">{ catalogSubmitLabel(f.ID, "customer") }</button></div>
 	</form>
 }
@@ -267,21 +354,8 @@ templ SupplierForm(f PartyFormData) {
 	if f.Err != "" {
 		<div class="alert alert--error" role="alert">{ f.Err }</div>
 	}
-	<form method="post" action={ catalogAction("suppliers", f.ID) } class="form-grid" data-on:submit__prevent={ dsCatalogSubmit("suppliers", f.ID) }>
-		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ f.Name } required/></div>
-		<div class="form-field"><label class="form-label">Label</label><input class="form-input" type="text" name="label" value={ f.Label } placeholder="Supplier"/></div>
-		<div class="form-field"><label class="form-label">Alias</label><input class="form-input" type="text" name="alias" value={ f.Alias }/></div>
-		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ f.TaxCountry } placeholder="ES"/></div>
-		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ f.TaxCode }/></div>
-		<div class="form-field"><label class="form-label">Tax scheme</label><input class="form-input" type="text" name="tax_scheme" value={ f.TaxScheme } placeholder="VAT"/></div>
-		<div class="form-field"><label class="form-label">Tax type</label><input class="form-input" type="text" name="tax_type" value={ f.TaxType }/></div>
-		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ f.Email }/></div>
-		<div class="form-field"><label class="form-label">Phone</label><input class="form-input" type="tel" name="phone" value={ f.Phone }/></div>
-		<div class="form-field"><label class="form-label">Website</label><input class="form-input" type="url" name="website" value={ f.Website }/></div>
-		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ f.Address }/></div>
-		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ f.Locality }/></div>
-		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ f.PostCode }/></div>
-		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ f.Country } placeholder="ES"/></div>
+	<form method="post" action={ catalogAction("suppliers", f.ID) } class="doc-form" data-on:submit__prevent={ dsCatalogSubmit("suppliers", f.ID) }>
+		@PartyFields(f, "Supplier")
 		<div class="form-actions"><button type="submit" class="btn btn--primary">{ catalogSubmitLabel(f.ID, "supplier") }</button></div>
 	</form>
 }
@@ -313,6 +387,38 @@ templ SupplierNewPage(f PartyFormData) {
 				@SupplierForm(f)
 			</div>
 		</div>
+	}
+}
+
+// CompanyForm edits the single issuing company. The suppliers catalog remains
+// the storage model, but the UI exposes only one company.
+templ CompanyForm(f PartyFormData) {
+	if f.Err != "" {
+		<div class="alert alert--error" role="alert">{ f.Err }</div>
+	}
+	<form method="post" action="/company" class="doc-form" data-on:submit__prevent="@post('/company', {contentType: 'form'})">
+		@PartyFields(f, "Company")
+		<div class="form-actions"><button type="submit" class="btn btn--primary">Save company</button></div>
+	</form>
+}
+
+templ CompanySection(f PartyFormData) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">Company</h1>
+			<p class="page-head__subtitle">Issuing party used on invoices and other documents</p>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card__body">
+			@CompanyForm(f)
+		</div>
+	</div>
+}
+
+templ CompanyPage(f PartyFormData) {
+	@Layout("company · Ittisal Invoice", "company") {
+		@CompanySection(f)
 	}
 }
 
@@ -381,18 +487,22 @@ templ ProductForm(p sqlc.Product, errMsg string) {
 	if errMsg != "" {
 		<div class="alert alert--error" role="alert">{ errMsg }</div>
 	}
-	<form method="post" action={ catalogAction("products", p.ID) } class="form-grid" data-on:submit__prevent={ dsCatalogSubmit("products", p.ID) }>
-		<div class="form-field"><label class="form-label">Ref</label><input class="form-input" type="text" name="ref" value={ p.Ref } required/></div>
-		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ p.Name } required/></div>
+	<form method="post" action={ catalogAction("products", p.ID) } class="doc-form" data-on:submit__prevent={ dsCatalogSubmit("products", p.ID) }>
+		<div class="doc-form__section">Product</div>
+		<div class="form-field"><label class="form-label form-label--required">Ref</label><input class="form-input" type="text" name="ref" value={ p.Ref } required/></div>
+		<div class="form-field"><label class="form-label form-label--required">Name</label><input class="form-input" type="text" name="name" value={ p.Name } required/></div>
 		<div class="form-field"><label class="form-label">Key</label><input class="form-input" type="text" name="key" value={ nsStr(p.Key) } placeholder="goods|services"/></div>
+		<div class="form-field"><label class="form-label">Origin</label><input class="form-input" type="text" name="origin" value={ nsStr(p.Origin) } placeholder="ES"/></div>
+		<div class="form-field form-field--full"><label class="form-label">Description</label><input class="form-input" type="text" name="description" value={ nsStr(p.Description) }/></div>
+
+		<div class="doc-form__section">Pricing</div>
 		<div class="form-field"><label class="form-label">Price</label><input class="form-input" type="text" name="price" value={ p.Price } placeholder="100.00"/></div>
+		<div class="form-field"><label class="form-label">Currency</label><input class="form-input" type="text" name="currency" value={ p.Currency } placeholder="EUR"/></div>
 		<div class="form-field"><label class="form-label">List price</label><input class="form-input" type="text" name="list" value={ nsStr(p.List) }/></div>
 		<div class="form-field"><label class="form-label">Discount</label><input class="form-input" type="text" name="discount" value={ nsStr(p.Discount) }/></div>
 		<div class="form-field"><label class="form-label">Per quantity</label><input class="form-input" type="text" name="per" value={ nsStr(p.Per) } placeholder="1"/></div>
-		<div class="form-field"><label class="form-label">Currency</label><input class="form-input" type="text" name="currency" value={ p.Currency } placeholder="EUR"/></div>
 		<div class="form-field"><label class="form-label">Unit</label><input class="form-input" type="text" name="unit" value={ nsStr(p.Unit) } placeholder="hour"/></div>
-		<div class="form-field"><label class="form-label">Origin</label><input class="form-input" type="text" name="origin" value={ nsStr(p.Origin) } placeholder="ES"/></div>
-		<div class="form-field form-field--full"><label class="form-label">Description</label><input class="form-input" type="text" name="description" value={ nsStr(p.Description) }/></div>
+
 		<div class="form-actions"><button type="submit" class="btn btn--primary">{ catalogSubmitLabel(p.ID, "product") }</button></div>
 	</form>
 }
@@ -434,11 +544,12 @@ templ CustomerCreateForm(f CustomerFormData) {
 	if f.Err != "" {
 		<div class="alert alert--error" role="alert">{ f.Err }</div>
 	}
-	<form method="post" action="/customers" class="form-grid" data-on:submit__prevent="@post('/customers', {contentType: 'form'})">
+	<form method="post" action="/customers" class="doc-form" data-on:submit__prevent="@post('/customers', {contentType: 'form'})">
 		<input type="hidden" name="modal" value="1"/>
 		<input type="hidden" name="for" value={ f.For }/>
+		<div class="doc-form__section">Customer</div>
 		<div class="form-field form-field--full">
-			<label class="form-label" for="nc-name">Name</label>
+			<label class="form-label form-label--required" for="nc-name">Name</label>
 			<input class="form-input" id="nc-name" type="text" name="name" value={ f.Name } required/>
 		</div>
 		<div class="form-field">
@@ -466,11 +577,12 @@ templ SupplierCreateForm(f CustomerFormData) {
 	if f.Err != "" {
 		<div class="alert alert--error" role="alert">{ f.Err }</div>
 	}
-	<form method="post" action="/suppliers" class="form-grid" data-on:submit__prevent="@post('/suppliers', {contentType: 'form'})">
+	<form method="post" action="/suppliers" class="doc-form" data-on:submit__prevent="@post('/suppliers', {contentType: 'form'})">
 		<input type="hidden" name="modal" value="1"/>
 		<input type="hidden" name="for" value={ f.For }/>
+		<div class="doc-form__section">Supplier</div>
 		<div class="form-field form-field--full">
-			<label class="form-label" for="ns-name">Name</label>
+			<label class="form-label form-label--required" for="ns-name">Name</label>
 			<input class="form-input" id="ns-name" type="text" name="name" value={ f.Name } required/>
 		</div>
 		<div class="form-field">

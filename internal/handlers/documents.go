@@ -748,23 +748,28 @@ func (h *Handler) lookupProduct(ctx context.Context, name string) (DocProduct, b
 	return DocProduct{}, false
 }
 
-// attachSuppliers loads the supplier catalog for the searchable picker.
+// attachSuppliers loads the single issuing company for the document form.
+// The catalog may contain more rows (API-created), but the UI only exposes
+// the first one as "Company".
 func (h *Handler) attachSuppliers(ctx context.Context, f *DocForm) {
 	rows, err := h.catalog.ListSuppliers(ctx)
 	if err != nil {
 		log.Printf("form suppliers: %v", err)
 		return
 	}
-	for _, s := range rows {
-		f.Suppliers = append(f.Suppliers, DocSupplier{
-			ID:      s.ID,
-			Name:    s.Name,
-			Country: nsStr(s.TaxCountry),
-			Code:    nsStr(s.TaxCode),
-		})
-		if f.SupID == "" && f.SupName != "" && strings.EqualFold(strings.TrimSpace(s.Name), strings.TrimSpace(f.SupName)) {
-			f.SupID = s.ID
-		}
+	if len(rows) == 0 {
+		return
+	}
+	s := rows[0]
+	f.Suppliers = []DocSupplier{{
+		ID:      s.ID,
+		Name:    s.Name,
+		Country: nsStr(s.TaxCountry),
+		Code:    nsStr(s.TaxCode),
+	}}
+	if f.SupID == "" && f.SupName == "" {
+		f.SupID, f.SupName = s.ID, s.Name
+		f.SupCountry, f.SupCode = nsStr(s.TaxCountry), nsStr(s.TaxCode)
 	}
 }
 

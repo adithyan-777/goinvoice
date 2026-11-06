@@ -26,7 +26,7 @@ type CustomerFormData struct {
 
 // PartyFormData is the flat view model shared by the customer and supplier
 // create/edit modals. It maps 1:1 to the scalar org.Party fields the HTML
-// forms expose.
+// forms expose, plus repeatable identity and logo rows.
 type PartyFormData struct {
 	ID         string
 	Label      string
@@ -43,7 +43,23 @@ type PartyFormData struct {
 	Locality   string
 	PostCode   string
 	Country    string
+	Identities []PartyIdentityForm
+	Logos      []PartyLogoForm
 	Err        string
+}
+
+// PartyIdentityForm is one extra code (GST, registration number, DUNS, …).
+type PartyIdentityForm struct {
+	Type        string
+	Code        string
+	Description string
+}
+
+// PartyLogoForm is one logo image row.
+type PartyLogoForm struct {
+	Label string
+	URL   string
+	Alt   string
 }
 
 // partyFormData projects a GOBL party onto the flat form view model.
@@ -73,6 +89,32 @@ func partyFormData(p *org.Party, id, errMsg string) PartyFormData {
 		f.Locality = a.Locality
 		f.PostCode = a.Code.String()
 		f.Country = a.Country.String()
+	}
+	for _, idn := range p.Identities {
+		if idn == nil {
+			continue
+		}
+		typ := idn.Key.String()
+		if typ == "" {
+			typ = idn.Type.String()
+		}
+		f.Identities = append(f.Identities, PartyIdentityForm{
+			Type:        typ,
+			Code:        idn.Code.String(),
+			Description: idn.Description,
+		})
+	}
+	if len(f.Identities) == 0 {
+		f.Identities = []PartyIdentityForm{{}}
+	}
+	for _, img := range p.Logos {
+		if img == nil {
+			continue
+		}
+		f.Logos = append(f.Logos, PartyLogoForm{Label: img.Label, URL: img.URL, Alt: img.Alt})
+	}
+	if len(f.Logos) == 0 {
+		f.Logos = []PartyLogoForm{{}}
 	}
 	return f
 }

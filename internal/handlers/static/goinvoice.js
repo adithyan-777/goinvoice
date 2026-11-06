@@ -239,4 +239,60 @@
 			setExpanded(c, false);
 		});
 	});
+
+	// Generic repeatable rows (extra identity codes, logos, …). The form
+	// renders one row plus a hidden <template data-repeater-template>; the
+	// "__IDX__" placeholder is replaced when a row is appended.
+	function renumberRepeats(container) {
+		container.querySelectorAll("[data-repeat]").forEach(function (row, i) {
+			const title = row.querySelector("[data-repeat-title]");
+			if (!title) return;
+			const name = title.getAttribute("data-repeat-name") || "Item";
+			title.textContent = name + " " + (i + 1);
+		});
+	}
+
+	function appendRepeat(container, idx) {
+		const form = container.closest("form");
+		const tpl = container.querySelector("template[data-repeater-template]") ||
+			(form ? form.querySelector("template[data-repeater-template]") : null);
+		if (!tpl) return;
+		const html = tpl.innerHTML.split("__IDX__").join(String(idx));
+		const add = container.querySelector("[data-repeater-add]");
+		if (add) {
+			const holder = add.closest(".form-field") || add;
+			holder.insertAdjacentHTML("beforebegin", html);
+		} else {
+			container.insertAdjacentHTML("beforeend", html);
+		}
+		renumberRepeats(container);
+	}
+
+	document.addEventListener("click", function (e) {
+		const add = e.target.closest("[data-repeater-add]");
+		if (add) {
+			const container = add.closest("[data-repeats]");
+			if (!container) return;
+			let idx = parseInt(container.getAttribute("data-next-index") || "", 10);
+			if (Number.isNaN(idx)) idx = container.querySelectorAll("[data-repeat]").length;
+			appendRepeat(container, idx);
+			container.setAttribute("data-next-index", String(idx + 1));
+			return;
+		}
+		const remove = e.target.closest("[data-repeat-remove]");
+		if (!remove) return;
+		const row = remove.closest("[data-repeat]");
+		const container = remove.closest("[data-repeats]");
+		if (!row || !container) return;
+		// Keep one row so the form always has something to submit; clear it
+		// instead of removing the last one.
+		if (container.querySelectorAll("[data-repeat]").length <= 1) {
+			row.querySelectorAll("input, select, textarea").forEach(function (el) {
+				el.value = "";
+			});
+			return;
+		}
+		row.remove();
+		renumberRepeats(container);
+	});
 })();

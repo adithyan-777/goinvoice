@@ -51,7 +51,7 @@ templ Layout(title string, nav string) {
 			<link rel="stylesheet" href="/static/pattika/css/sidebar.css?v=3"/>
 			<link rel="stylesheet" href="/static/pattika/css/components.css?v=3"/>
 			<link rel="stylesheet" href="/static/pattika/css/utilities.css?v=3"/>
-			<link rel="stylesheet" href="/static/goinvoice.css?v=10"/>
+			<link rel="stylesheet" href="/static/goinvoice.css?v=11"/>
 			<script type="module" src="/static/datastar.js?v=2"></script>
 		</head>
 		<body class="app" data-signals={ "{modalOpen: false, modalTitle: 'Edit', toast: '', nav: '" + nav + "'}" } data-on:keydown__window="if (evt.key === 'Escape') $modalOpen = false">
@@ -95,9 +95,9 @@ templ Layout(title string, nav string) {
 							<span class="quick-action__icon"><i class="bx bx-user admin-icon admin-icon--20"></i></span>
 							<span class="quick-action__label">Customers</span>
 						</a>
-						<a href="/suppliers" class="quick-action" data-on:click__prevent={ dsNavSuppliers } data-class={ dsNavActive("suppliers") }>
+						<a href="/company" class="quick-action" data-on:click__prevent={ dsNavCompany } data-class={ dsNavActive("company") }>
 							<span class="quick-action__icon"><i class="bx bx-buildings admin-icon admin-icon--20"></i></span>
-							<span class="quick-action__label">Suppliers</span>
+							<span class="quick-action__label">Company</span>
 						</a>
 						<a href="/products" class="quick-action" data-on:click__prevent={ dsNavProducts } data-class={ dsNavActive("products") }>
 							<span class="quick-action__icon"><i class="bx bx-package admin-icon admin-icon--20"></i></span>
@@ -144,7 +144,7 @@ templ Layout(title string, nav string) {
 				</div>
 			</div>
 			<script src="/static/pattika/js/theme.js?v=3"></script>
-			<script src="/static/goinvoice.js?v=5"></script>
+			<script src="/static/goinvoice.js?v=6"></script>
 		</body>
 	</html>
 }

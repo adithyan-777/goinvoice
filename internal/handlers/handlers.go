@@ -7,6 +7,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -45,6 +47,8 @@ func New(entries store.Entries, catalog store.Catalog) *Handler {
 // Register mounts all invoice routes on the router.
 func (h *Handler) Register(r chi.Router) {
 	r.Get("/", h.Index)
+	r.Get("/company", h.Company)
+	r.Post("/company", h.SaveCompany)
 	r.Get("/customers", h.Customers)
 	r.Post("/customers", h.CreateCustomer)
 	r.Get("/customers/new", h.NewCustomerPage)
@@ -82,6 +86,7 @@ func (h *Handler) Register(r chi.Router) {
 	r.Get("/partials/statuses/new", h.NewStatusModal)
 	r.Get("/partials/statuses/{id}/edit", h.EditStatusModal)
 	r.Get("/partials/customers", h.CustomersPartial)
+	r.Get("/partials/company", h.CompanyPartial)
 	r.Get("/partials/suppliers", h.SuppliersPartial)
 	r.Get("/partials/products", h.ProductsPartial)
 	r.Get("/partials/products/new", h.NewProductModal)
@@ -348,17 +353,107 @@ func (h *Handler) Customers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Suppliers handles GET /suppliers and renders the supplier catalog.
+// company returns the single issuing company (the first supplier row) and its
+// party, or a nil party when none exists yet.
+func (h *Handler) company(ctx context.Context) (string, *org.Party, error) {
+	rows, err := h.catalog.ListSuppliers(ctx)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(rows) == 0 {
+		return "", nil, nil
+	}
+	id := rows[0].ID
+	p, err := h.catalog.GetSupplierParty(ctx, id)
+	if err != nil {
+		return "", nil, err
+	}
+	return id, p, nil
+}
+
+// Suppliers now redirects to the single-company details page; the supplier
+// API endpoints remain available below.
 func (h *Handler) Suppliers(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.catalog.ListSuppliers(r.Context())
+	http.Redirect(w, r, "/company", http.StatusSeeOther)
+}
+
+// Company handles GET /company and renders the single issuing company.
+func (h *Handler) Company(w http.ResponseWriter, r *http.Request) {
+	_, p, err := h.company(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := SuppliersPage(rows, r.URL.Query().Get("error")).Render(r.Context(), w); err != nil {
-		log.Printf("render suppliers: %v", err)
+	if err := CompanyPage(partyFormData(p, "", r.URL.Query().Get("error"))).Render(r.Context(), w); err != nil {
+		log.Printf("render company: %v", err)
 	}
+}
+
+// CompanyPartial handles GET /partials/company for in-place navigation.
+func (h *Handler) CompanyPartial(w http.ResponseWriter, r *http.Request) {
+	_, p, err := h.company(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	respondFragment(w, r, "#main", CompanySection(partyFormData(p, "", "")))
+}
+
+// SaveCompany handles POST /company. It updates the single company, creating
+// it on first save. The UI never creates a second supplier.
+func (h *Handler) SaveCompany(w http.ResponseWriter, r *http.Request) {
+	f, isJSON, err := decodeParty(r)
+	if err != nil {
+		if isJSON {
+			writeError(w, http.StatusBadRequest, err)
+			return
+		}
+		if wantsFragment(r) {
+			respondFragment(w, r, "#main", CompanySection(partyFormData(f, "", err.Error())))
+			return
+		}
+		http.Redirect(w, r, "/company?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	id, existing, err := h.company(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	next := f
+	if existing != nil {
+		applyPartyForm(existing, f)
+		next = existing
+	} else {
+		id = uuid.NewString()
+	}
+	if err := h.catalog.SaveSupplier(r.Context(), id, next); err != nil {
+		if isJSON {
+			if productConflict(err) {
+				writeError(w, http.StatusConflict, errors.New("company tax code already exists"))
+				return
+			}
+			writeError(w, http.StatusInternalServerError, err)
+			return
+		}
+		msg := conflictMessage(err, "company tax code already exists")
+		if wantsFragment(r) {
+			respondFragment(w, r, "#main", CompanySection(partyFormData(next, "", msg)))
+			return
+		}
+		http.Redirect(w, r, "/company?error="+url.QueryEscape(msg), http.StatusSeeOther)
+		return
+	}
+	if isJSON {
+		writeJSON(w, http.StatusOK, map[string]any{"id": id, "name": next.Name})
+		return
+	}
+	if wantsFragment(r) {
+		respondFragment(w, r, "#main", CompanySection(partyFormData(next, "", "")))
+		return
+	}
+	http.Redirect(w, r, "/company", http.StatusSeeOther)
 }
 
 // Products handles GET /products and renders the product catalog.
@@ -821,6 +916,35 @@ func partyFromForm(r *http.Request) *org.Party {
 	if addr.Street != "" || addr.Locality != "" || addr.Code != "" || addr.Country != "" {
 		p.Addresses = []*org.Address{addr}
 	}
+	for _, i := range formLineIndexes(r.Form, "identity_type", "identity_code", "identity_desc") {
+		sfx := "_" + strconv.Itoa(i)
+		typ := strings.TrimSpace(r.FormValue("identity_type" + sfx))
+		code := strings.TrimSpace(r.FormValue("identity_code" + sfx))
+		desc := strings.TrimSpace(r.FormValue("identity_desc" + sfx))
+		if typ == "" && code == "" && desc == "" {
+			continue
+		}
+		if code == "" {
+			continue
+		}
+		p.Identities = append(p.Identities, &org.Identity{
+			Key:         cbc.Key(typ),
+			Code:        cbc.Code(code),
+			Description: desc,
+		})
+	}
+	for _, i := range formLineIndexes(r.Form, "logo_url", "logo_label", "logo_alt") {
+		sfx := "_" + strconv.Itoa(i)
+		logoURL := strings.TrimSpace(r.FormValue("logo_url" + sfx))
+		if logoURL == "" {
+			continue
+		}
+		p.Logos = append(p.Logos, &org.Image{
+			URL:   logoURL,
+			Label: strings.TrimSpace(r.FormValue("logo_label"+sfx)),
+			Alt:   strings.TrimSpace(r.FormValue("logo_alt"+sfx)),
+		})
+	}
 	return p
 }
 
@@ -829,6 +953,9 @@ func partyFromForm(r *http.Request) *org.Party {
 // website, so entries created through the JSON API are preserved.
 func applyPartyForm(dst, src *org.Party) {
 	dst.Label, dst.Name, dst.Alias, dst.TaxID = src.Label, src.Name, src.Alias, src.TaxID
+	// Extra codes and logos are fully managed by the form, so replace them
+	// (including clearing when the user removes every row).
+	dst.Identities, dst.Logos = src.Identities, src.Logos
 	if len(src.Emails) > 0 {
 		if len(dst.Emails) > 0 {
 			dst.Emails[0] = src.Emails[0]

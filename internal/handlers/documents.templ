@@ -208,7 +208,7 @@ templ DocFormBody(f DocForm) {
 
 		<div class="doc-form__section">Parties</div>
 		<div class="form-field form-field--full">
-			<label class="form-label" for="doc-sup-name">Supplier</label>
+			<label class="form-label form-label--required" for="doc-sup-name">Company</label>
 			<div class="party-picker">
 				<div class="combo" data-combo>
 					<input
@@ -218,7 +218,7 @@ templ DocFormBody(f DocForm) {
 						name="sup_name"
 						value={ f.SupName }
 						autocomplete="off"
-						placeholder="Search suppliers…"
+						placeholder="Company"
 						role="combobox"
 						aria-expanded="false"
 						aria-autocomplete="list"
@@ -227,7 +227,7 @@ templ DocFormBody(f DocForm) {
 					<input type="hidden" name="sup_id" value={ f.SupID }/>
 					<input type="hidden" name="sup_code" value={ f.SupCode }/>
 					<input type="hidden" name="sup_country" value={ f.SupCountry }/>
-					<button type="button" class="combo__toggle" tabindex="-1" aria-label="Show suppliers">
+					<button type="button" class="combo__toggle" tabindex="-1" aria-label="Show companies">
 						<i class="bx bx-chevron-down"></i>
 					</button>
 					<div class="combo__list" role="listbox" hidden>
@@ -245,14 +245,14 @@ templ DocFormBody(f DocForm) {
 								<span class="combo__meta">{ s.Code }</span>
 							</button>
 						}
-						<div class="combo__empty" hidden>No matching suppliers</div>
+						<div class="combo__empty" hidden>No matching companies</div>
 					</div>
 				</div>
-				<button type="button" class="btn btn--ghost btn--sm" data-on:click__prevent={ dsNewSupplier(f.Route) }>
-					<i class="bx bx-plus admin-icon admin-icon--16"></i> New supplier
-				</button>
+				<a class="btn btn--ghost btn--sm" href="/company">
+					<i class="bx bx-buildings admin-icon admin-icon--16"></i> Edit company
+				</a>
 			</div>
-			<p class="form-hint">Tax ID and country come from the selected supplier record.</p>
+			<p class="form-hint">Tax ID and country come from the company record.</p>
 		</div>
 		<div class="form-field form-field--full">
 			<label class="form-label" for="doc-cus-name">Customer</label>

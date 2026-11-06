@@ -49,7 +49,7 @@ func Layout(title string, nav string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script>\n\t\t\t\t(function () {\n\t\t\t\t\tconst modeKey = \"logkshana-theme-mode\";\n\t\t\t\t\tconst prefsKey = \"ittisal-ui-prefs\";\n\t\t\t\t\tconst defaults = { mode: \"system\", layout: \"compact\", scale: \"md\", sidebarVariant: \"inset\", sidebarMode: \"default\" };\n\t\t\t\t\tconst prefs = { ...defaults };\n\t\t\t\t\ttry {\n\t\t\t\t\t\tconst mode = window.localStorage.getItem(modeKey);\n\t\t\t\t\t\tif (mode === \"system\" || mode === \"light\" || mode === \"dark\") prefs.mode = mode;\n\t\t\t\t\t\tconst raw = window.localStorage.getItem(prefsKey);\n\t\t\t\t\t\tif (raw) Object.assign(prefs, JSON.parse(raw));\n\t\t\t\t\t} catch (_) {}\n\t\t\t\t\tif (![\"light\", \"dark\", \"system\"].includes(prefs.mode)) prefs.mode = \"system\";\n\t\t\t\t\tconst prefersDark = window.matchMedia(\"(prefers-color-scheme: dark)\").matches;\n\t\t\t\t\tconst theme = prefs.mode === \"dark\" ? \"dark\" : prefs.mode === \"light\" ? \"light\" : prefersDark ? \"dark\" : \"light\";\n\t\t\t\t\tconst root = document.documentElement;\n\t\t\t\t\troot.setAttribute(\"data-theme\", theme);\n\t\t\t\t\troot.setAttribute(\"data-layout\", prefs.layout || defaults.layout);\n\t\t\t\t\troot.setAttribute(\"data-scale\", prefs.scale || defaults.scale);\n\t\t\t\t\troot.setAttribute(\"data-sidebar-variant\", prefs.sidebarVariant || defaults.sidebarVariant);\n\t\t\t\t\troot.setAttribute(\"data-sidebar-mode\", prefs.sidebarMode || defaults.sidebarMode);\n\t\t\t\t})();\n\t\t\t</script><link rel=\"icon\" href=\"data:,\"><link rel=\"preconnect\" href=\"https://cdn.jsdelivr.net\" crossorigin><link href=\"https://cdn.jsdelivr.net/npm/@fontsource-variable/geist@5.2.5/index.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/basic/boxicons.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/filled/boxicons-filled.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/brands/boxicons-brands.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/animations.min.css\" rel=\"stylesheet\"><link rel=\"stylesheet\" href=\"/static/pattika/css/tokens.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/base.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/motion.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/layout.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/sidebar.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/components.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/utilities.css?v=3\"><link rel=\"stylesheet\" href=\"/static/goinvoice.css?v=10\"><script type=\"module\" src=\"/static/datastar.js?v=2\"></script></head><body class=\"app\" data-signals=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><script>\n\t\t\t\t(function () {\n\t\t\t\t\tconst modeKey = \"logkshana-theme-mode\";\n\t\t\t\t\tconst prefsKey = \"ittisal-ui-prefs\";\n\t\t\t\t\tconst defaults = { mode: \"system\", layout: \"compact\", scale: \"md\", sidebarVariant: \"inset\", sidebarMode: \"default\" };\n\t\t\t\t\tconst prefs = { ...defaults };\n\t\t\t\t\ttry {\n\t\t\t\t\t\tconst mode = window.localStorage.getItem(modeKey);\n\t\t\t\t\t\tif (mode === \"system\" || mode === \"light\" || mode === \"dark\") prefs.mode = mode;\n\t\t\t\t\t\tconst raw = window.localStorage.getItem(prefsKey);\n\t\t\t\t\t\tif (raw) Object.assign(prefs, JSON.parse(raw));\n\t\t\t\t\t} catch (_) {}\n\t\t\t\t\tif (![\"light\", \"dark\", \"system\"].includes(prefs.mode)) prefs.mode = \"system\";\n\t\t\t\t\tconst prefersDark = window.matchMedia(\"(prefers-color-scheme: dark)\").matches;\n\t\t\t\t\tconst theme = prefs.mode === \"dark\" ? \"dark\" : prefs.mode === \"light\" ? \"light\" : prefersDark ? \"dark\" : \"light\";\n\t\t\t\t\tconst root = document.documentElement;\n\t\t\t\t\troot.setAttribute(\"data-theme\", theme);\n\t\t\t\t\troot.setAttribute(\"data-layout\", prefs.layout || defaults.layout);\n\t\t\t\t\troot.setAttribute(\"data-scale\", prefs.scale || defaults.scale);\n\t\t\t\t\troot.setAttribute(\"data-sidebar-variant\", prefs.sidebarVariant || defaults.sidebarVariant);\n\t\t\t\t\troot.setAttribute(\"data-sidebar-mode\", prefs.sidebarMode || defaults.sidebarMode);\n\t\t\t\t})();\n\t\t\t</script><link rel=\"icon\" href=\"data:,\"><link rel=\"preconnect\" href=\"https://cdn.jsdelivr.net\" crossorigin><link href=\"https://cdn.jsdelivr.net/npm/@fontsource-variable/geist@5.2.5/index.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/basic/boxicons.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/filled/boxicons-filled.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/brands/boxicons-brands.min.css\" rel=\"stylesheet\"><link href=\"https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/animations.min.css\" rel=\"stylesheet\"><link rel=\"stylesheet\" href=\"/static/pattika/css/tokens.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/base.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/motion.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/layout.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/sidebar.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/components.css?v=3\"><link rel=\"stylesheet\" href=\"/static/pattika/css/utilities.css?v=3\"><link rel=\"stylesheet\" href=\"/static/goinvoice.css?v=11\"><script type=\"module\" src=\"/static/datastar.js?v=2\"></script></head><body class=\"app\" data-signals=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -218,14 +218,14 @@ func Layout(title string, nav string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"><span class=\"quick-action__icon\"><i class=\"bx bx-user admin-icon admin-icon--20\"></i></span> <span class=\"quick-action__label\">Customers</span></a> <a href=\"/suppliers\" class=\"quick-action\" data-on:click__prevent=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"><span class=\"quick-action__icon\"><i class=\"bx bx-user admin-icon admin-icon--20\"></i></span> <span class=\"quick-action__label\">Customers</span></a> <a href=\"/company\" class=\"quick-action\" data-on:click__prevent=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(dsNavSuppliers)
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(dsNavCompany)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/handlers/index.templ`, Line: 98, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/handlers/index.templ`, Line: 98, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -236,15 +236,15 @@ func Layout(title string, nav string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(dsNavActive("suppliers"))
+		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(dsNavActive("company"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/handlers/index.templ`, Line: 98, Col: 127}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/handlers/index.templ`, Line: 98, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><span class=\"quick-action__icon\"><i class=\"bx bx-buildings admin-icon admin-icon--20\"></i></span> <span class=\"quick-action__label\">Suppliers</span></a> <a href=\"/products\" class=\"quick-action\" data-on:click__prevent=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><span class=\"quick-action__icon\"><i class=\"bx bx-buildings admin-icon admin-icon--20\"></i></span> <span class=\"quick-action__label\">Company</span></a> <a href=\"/products\" class=\"quick-action\" data-on:click__prevent=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -291,7 +291,7 @@ func Layout(title string, nav string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\"><div class=\"admin-modal__backdrop\" data-on:click=\"$modalOpen = false\"></div><div class=\"admin-modal__dialog\"><div class=\"admin-modal__head\"><h2 class=\"admin-modal__title\" id=\"modal-title\" data-text=\"$modalTitle\">Edit</h2><button type=\"button\" class=\"btn-icon\" aria-label=\"Close\" data-on:click=\"$modalOpen = false\"><i class=\"bx bx-x admin-icon admin-icon--20\"></i></button></div><div class=\"admin-modal__body\" id=\"modal-body\"></div></div></div><script src=\"/static/pattika/js/theme.js?v=3\"></script><script src=\"/static/goinvoice.js?v=5\"></script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\"><div class=\"admin-modal__backdrop\" data-on:click=\"$modalOpen = false\"></div><div class=\"admin-modal__dialog\"><div class=\"admin-modal__head\"><h2 class=\"admin-modal__title\" id=\"modal-title\" data-text=\"$modalTitle\">Edit</h2><button type=\"button\" class=\"btn-icon\" aria-label=\"Close\" data-on:click=\"$modalOpen = false\"><i class=\"bx bx-x admin-icon admin-icon--20\"></i></button></div><div class=\"admin-modal__body\" id=\"modal-body\"></div></div></div><script src=\"/static/pattika/js/theme.js?v=3\"></script><script src=\"/static/goinvoice.js?v=6\"></script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

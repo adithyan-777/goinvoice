@@ -40,8 +40,10 @@ badges and tabular money figures).
 `POST /products` creates a product (JSON API or the form on `/products`;
 duplicate `ref` → `409`). `POST /products/{id}` updates,
 `DELETE /products/{id}` deletes (`204`); the list page links an edit form
-per row with inline delete. Customers and suppliers expose the same
-CRUD shape under `/customers` and `/suppliers` (unique `tax_code` → `409`).
+per row with inline delete. Customers expose CRUD under `/customers`
+(unique `tax_code` → `409`). The issuing company is a single record edited at
+`/company` (stored in the `suppliers` table); `/suppliers` redirects there, and
+the supplier CRUD API routes remain available for integrations.
 
 ### Catalog parties
 
@@ -93,10 +95,11 @@ HTML form. Selecting a product in a document line embeds the whole item
 (ref, description, unit, origin, identities, attributes, images, alt prices,
 extensions) while the line name/price remain editable.
 
-Customers, suppliers and products all use the same modal workflow as the bill
-documents: **New** opens a modal form, the row edit button opens the same form
-pre-filled, and non-JS clients can use `/customers/new`, `/suppliers/new` and
-`/products/new`.
+Customers and products use the same modal workflow as the bill documents:
+**New** opens a modal form and the row edit button opens the same form
+pre-filled (non-JS fallbacks: `/customers/new`, `/products/new`). The single
+issuing company is edited directly on `/company`, and document forms prefill it
+as **Company** with no supplier picker clutter.
 
 Pages are SPA-like via [Datastar](https://data-star.dev) v1
 (`internal/handlers/static/datastar.js`, vendored, no CDN): nav swaps
