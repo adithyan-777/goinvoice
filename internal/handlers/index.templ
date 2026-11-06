@@ -50,10 +50,10 @@ templ Layout(title string, nav string) {
 			<link rel="stylesheet" href="/static/pattika/css/sidebar.css?v=3"/>
 			<link rel="stylesheet" href="/static/pattika/css/components.css?v=3"/>
 			<link rel="stylesheet" href="/static/pattika/css/utilities.css?v=3"/>
-			<link rel="stylesheet" href="/static/goinvoice.css?v=3"/>
+			<link rel="stylesheet" href="/static/goinvoice.css?v=7"/>
 			<script type="module" src="/static/datastar.js?v=2"></script>
 		</head>
-		<body class="app" data-signals={ "{modalOpen: false, toast: '', nav: '" + nav + "'}" } data-on:keydown__window="if (evt.key === 'Escape') $modalOpen = false">
+		<body class="app" data-signals={ "{modalOpen: false, modalTitle: 'Edit', toast: '', nav: '" + nav + "'}" } data-on:keydown__window="if (evt.key === 'Escape') $modalOpen = false">
 			<input type="checkbox" id="sidebar-collapsed" class="sidebar-state" aria-hidden="true"/>
 			<input type="checkbox" id="sidebar-mobile" class="sidebar-state" aria-hidden="true"/>
 			<aside class="sidebar" id="sidebar" aria-label="Primary">
@@ -73,6 +73,22 @@ templ Layout(title string, nav string) {
 						<a href="/" class="quick-action" data-on:click__prevent={ dsNavInvoices } data-class={ dsNavActive("invoices") }>
 							<span class="quick-action__icon"><i class="bx bx-receipt admin-icon admin-icon--20"></i></span>
 							<span class="quick-action__label">Invoices</span>
+						</a>
+						<a href="/orders" class="quick-action" data-on:click__prevent={ dsNavOrders } data-class={ dsNavActive("orders") }>
+							<span class="quick-action__icon"><i class="bx bx-cart admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Orders</span>
+						</a>
+						<a href="/deliveries" class="quick-action" data-on:click__prevent={ dsNavDeliveries } data-class={ dsNavActive("deliveries") }>
+							<span class="quick-action__icon"><i class="bx bx-truck admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Deliveries</span>
+						</a>
+						<a href="/payments" class="quick-action" data-on:click__prevent={ dsNavPayments } data-class={ dsNavActive("payments") }>
+							<span class="quick-action__icon"><i class="bx bx-wallet admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Payments</span>
+						</a>
+						<a href="/statuses" class="quick-action" data-on:click__prevent={ dsNavStatuses } data-class={ dsNavActive("statuses") }>
+							<span class="quick-action__icon"><i class="bx bx-pulse admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Statuses</span>
 						</a>
 						<a href="/customers" class="quick-action" data-on:click__prevent={ dsNavCustomers } data-class={ dsNavActive("customers") }>
 							<span class="quick-action__icon"><i class="bx bx-user admin-icon admin-icon--20"></i></span>
@@ -118,7 +134,7 @@ templ Layout(title string, nav string) {
 				<div class="admin-modal__backdrop" data-on:click="$modalOpen = false"></div>
 				<div class="admin-modal__dialog">
 					<div class="admin-modal__head">
-						<h2 class="admin-modal__title" id="modal-title">Edit</h2>
+						<h2 class="admin-modal__title" id="modal-title" data-text="$modalTitle">Edit</h2>
 						<button type="button" class="btn-icon" aria-label="Close" data-on:click="$modalOpen = false">
 							<i class="bx bx-x admin-icon admin-icon--20"></i>
 						</button>
@@ -127,16 +143,22 @@ templ Layout(title string, nav string) {
 				</div>
 			</div>
 			<script src="/static/pattika/js/theme.js?v=3"></script>
+			<script src="/static/goinvoice.js?v=3"></script>
 		</body>
 	</html>
 }
 
-templ InvoicesSection(summaries []*invoicer.Summary, stats invoicer.InvoiceStats) {
+templ InvoicesSection(summaries []*invoicer.Summary, stats invoicer.InvoiceStats, showNew bool) {
 	<div class="page-head">
 		<div class="page-head__copy">
 			<h1 class="page-head__title">Invoices</h1>
 			<p class="page-head__subtitle">Billing documents with calculated totals</p>
 		</div>
+		if showNew {
+			<div class="page-head__actions">
+				<a class="btn btn--primary" href="/invoices/new" data-on:click__prevent={ dsDocNew("invoices", "Invoice") }>New</a>
+			</div>
+		}
 	</div>
 	if len(summaries) == 0 {
 		<div class="empty-stage">
@@ -192,6 +214,8 @@ templ InvoicesSection(summaries []*invoicer.Summary, stats invoicer.InvoiceStats
 									<td class="table-actions">
 										<a class="btn-icon" title="View" href={ "/invoices/" + s.ID + "/html" }><i class="bx bx-file admin-icon admin-icon--18"></i></a>
 										<a class="btn-icon" title="JSON" href={ "/invoices/" + s.ID + "/envelope.json" }><i class="bx bx-code-alt admin-icon admin-icon--18"></i></a>
+										<a class="btn-icon" title="Edit" href={ "/invoices/" + s.ID + "/edit" } data-on:click__prevent={ dsDocEdit("invoices", s.ID, "Invoice") }><i class="bx bx-edit admin-icon admin-icon--18"></i></a>
+										<button type="button" class="btn-icon btn-icon--danger" title="Delete" data-on:click={ dsDelete("invoices", s.ID, s.Code) }><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
 									</td>
 								</tr>
 							}
@@ -204,8 +228,34 @@ templ InvoicesSection(summaries []*invoicer.Summary, stats invoicer.InvoiceStats
 	}
 }
 
-templ IndexPage(summaries []*invoicer.Summary, stats invoicer.InvoiceStats) {
-	@Layout("Ittisal Invoice", "invoices") {
-		@InvoicesSection(summaries, stats)
+templ InvoicesPage(summaries []*invoicer.Summary, stats invoicer.InvoiceStats) {
+	@Layout("invoices · Ittisal Invoice", "invoices") {
+		@InvoicesSection(summaries, stats, true)
 	}
+}
+
+templ IndexPage(summaries []*invoicer.Summary, stats invoicer.InvoiceStats, overview []DocOverview) {
+	@Layout("Ittisal Invoice", "invoices") {
+		@DocCards(overview)
+		@InvoicesSection(summaries, stats, true)
+	}
+}
+
+// DocCards renders the document-kind overview dashboard: one card per bill
+// document type with its stored count, linking to the kind's list page.
+// Plain hrefs work without JS; Datastar swaps #main in place when available.
+templ DocCards(overview []DocOverview) {
+	<div class="kpi-grid">
+		for _, o := range overview {
+			<a
+				class="card kpi"
+				href={ docOverviewHref(o.Route) }
+				data-on:click__prevent={ dsDocOverviewNav(o.Route) }
+			>
+				<div class="kpi__label">{ o.Title }</div>
+				<div class="kpi__value"><i class={ "bx " + o.Icon }></i> { o.Count }</div>
+				<div class="kpi__sub">stored envelopes</div>
+			</a>
+		}
+	</div>
 }

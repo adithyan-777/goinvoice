@@ -1,0 +1,349 @@
+package handlers
+
+import (
+	"github.com/neo/goinvoice/internal/invoicer"
+)
+
+// DocumentsSection renders the list page for one bill document kind.
+// route is the plural URL segment ("orders"), used for links, nav state and
+// UI delete posts; sample names the example JSON file for the empty state.
+templ DocumentsSection(route string, title string, one string, subtitle string, sample string, summaries []*invoicer.Summary, stats invoicer.InvoiceStats) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">{ title }</h1>
+			<p class="page-head__subtitle">{ subtitle }</p>
+		</div>
+		<div class="page-head__actions">
+			<a class="btn btn--primary" href={ "/" + route + "/new" } data-on:click__prevent={ dsDocNew(route, one) }>New</a>
+		</div>
+	</div>
+	if len(summaries) == 0 {
+		<div class="empty-stage">
+			<div class="empty-stage__icon"><i class="bx bx-receipt"></i></div>
+			<div class="empty-stage__title">No { title } yet</div>
+			<div class="empty-stage__text">Create one with:</div>
+			<pre class="code">
+				{ `curl -s -X POST http://localhost:8080/` + route + ` \
+  -H 'Content-Type: application/json' \
+  -d @examples/` + sample + ` > /dev/null` }
+			</pre>
+		</div>
+	} else {
+		<div class="kpi-grid">
+			<div class="card kpi">
+				<div class="kpi__label">{ title }</div>
+				<div class="kpi__value">{ stats.Count }</div>
+				<div class="kpi__sub">stored envelopes</div>
+			</div>
+			if route != "statuses" {
+				<div class="card kpi">
+					<div class="kpi__label">Payable</div>
+					<div class="kpi__value">{ stats.Payable }<small>{ stats.Currency }</small></div>
+					<div class="kpi__sub">total including tax</div>
+				</div>
+				<div class="card kpi">
+					<div class="kpi__label">Tax</div>
+					<div class="kpi__value">{ stats.Tax }<small>{ stats.Currency }</small></div>
+					<div class="kpi__sub">collected across documents</div>
+				</div>
+			}
+		</div>
+		<div class="card card--table">
+			<div class="card__body">
+				<div class="data-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Type</th>
+								<th>Code</th>
+								<th>Date</th>
+								<th>Customer</th>
+								if route != "statuses" {
+									<th class="num">Tax</th>
+									<th class="num">Payable</th>
+								}
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, s := range summaries {
+								<tr>
+									<td>{ s.Type }</td>
+									<td><span class="ref-badge">{ s.Series }</span>{ s.Code }</td>
+									<td>{ s.IssueDate }</td>
+									<td>{ s.Customer }</td>
+									if route != "statuses" {
+										<td class="num">{ s.Tax }</td>
+										<td class="num money">{ s.Payable }</td>
+									}
+									<td class="table-actions">
+										<a class="btn-icon" title="View" href={ "/" + route + "/" + s.ID + "/html" }><i class="bx bx-file admin-icon admin-icon--18"></i></a>
+										<a class="btn-icon" title="JSON" href={ "/" + route + "/" + s.ID + "/envelope.json" }><i class="bx bx-code-alt admin-icon admin-icon--18"></i></a>
+										<a class="btn-icon" title="Edit" href={ "/" + route + "/" + s.ID + "/edit" } data-on:click__prevent={ dsDocEdit(route, s.ID, one) }><i class="bx bx-edit admin-icon admin-icon--18"></i></a>
+										<button type="button" class="btn-icon btn-icon--danger" title="Delete" data-on:click={ dsDelete(route, s.ID, s.Type+" "+s.Code) }><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+		<p class="text-muted">Amounts as stored in the envelope</p>
+	}
+}
+
+templ DocumentsPage(route string, title string, one string, subtitle string, sample string, summaries []*invoicer.Summary, stats invoicer.InvoiceStats) {
+	@Layout(title+" · Ittisal Invoice", route) {
+		@DocumentsSection(route, title, one, subtitle, sample, summaries, stats)
+	}
+}
+
+
+// DocFormBody renders the structured New/Edit form for one bill document.
+// It is used both inside the modal (#modal-body) and on the standalone
+// /{route}/new and /{route}/{id}/edit pages.
+templ DocFormBody(f DocForm) {
+	if f.Err != "" {
+		<div class="alert alert--error" role="alert">{ f.Err }</div>
+	}
+	<form method="post" action={ f.Action } class="doc-form" data-on:submit__prevent={ dsDocSubmit(f.Action) }>
+		if f.Modal {
+			<input type="hidden" name="modal" value="1"/>
+		}
+		<div class="doc-form__section">Document</div>
+		<div class="form-field">
+			<label class="form-label" for="doc-type">Type</label>
+			<select class="form-select" id="doc-type" name="type">
+				for _, o := range docTypeOptions(f.Kind) {
+					<option value={ o.Value } selected?={ o.Value == f.Type }>{ o.Label }</option>
+				}
+			</select>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="doc-date">Issue date</label>
+			<input class="form-input" id="doc-date" type="date" name="issue_date" value={ f.IssueDate }/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="doc-series">Series</label>
+			<input class="form-input" id="doc-series" type="text" name="series" value={ f.Series }/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="doc-code">Code</label>
+			<input class="form-input" id="doc-code" type="text" name="code" value={ f.Code }/>
+		</div>
+		if f.Kind != "status" {
+			<div class="form-field">
+				<label class="form-label" for="doc-currency">Currency</label>
+				<input class="form-input" id="doc-currency" type="text" name="currency" value={ f.Currency }/>
+			</div>
+		}
+
+		<div class="doc-form__section">Parties</div>
+		<div class="form-field">
+			<label class="form-label" for="doc-sup-name">Supplier</label>
+			<input class="form-input" id="doc-sup-name" type="text" name="sup_name" value={ f.SupName } required/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="doc-sup-code">Supplier tax ID</label>
+			<input class="form-input" id="doc-sup-code" type="text" name="sup_code" value={ f.SupCode } placeholder="B98602642"/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="doc-sup-country">Supplier tax country</label>
+			<input class="form-input" id="doc-sup-country" type="text" name="sup_country" value={ f.SupCountry } placeholder="ES"/>
+		</div>
+		<div class="form-field form-field--full">
+			<label class="form-label" for="doc-cus-name">Customer</label>
+			<div class="customer-picker">
+				<div class="combo" data-combo>
+					<input
+						class="form-input combo__input"
+						id="doc-cus-name"
+						type="text"
+						name="cus_name"
+						value={ f.CusName }
+						autocomplete="off"
+						placeholder="Search customers…"
+						role="combobox"
+						aria-expanded="false"
+						aria-autocomplete="list"
+					/>
+					<input type="hidden" name="cus_id" value={ f.CusID }/>
+					<input type="hidden" name="cus_code" value={ f.CusCode }/>
+					<input type="hidden" name="cus_country" value={ f.CusCountry }/>
+					<button type="button" class="combo__toggle" tabindex="-1" aria-label="Show customers">
+						<i class="bx bx-chevron-down"></i>
+					</button>
+					<div class="combo__list" role="listbox" hidden>
+						for _, c := range f.Customers {
+							<button
+								type="button"
+								class="combo__option"
+								role="option"
+								data-id={ c.ID }
+								data-value={ c.Name }
+								data-code={ c.Code }
+								data-country={ c.Country }
+							>
+								<span>{ c.Name }</span>
+								<span class="combo__meta">{ c.Code }</span>
+							</button>
+						}
+						<div class="combo__empty" hidden>No matching customers</div>
+					</div>
+				</div>
+				<button type="button" class="btn btn--ghost btn--sm" data-on:click__prevent={ dsNewCustomer(f.Route) }>
+					<i class="bx bx-plus admin-icon admin-icon--16"></i> New customer
+				</button>
+			</div>
+			<p class="form-hint">Tax ID and country come from the selected customer record.</p>
+		</div>
+
+		if f.Kind == "invoice" || f.Kind == "order" || f.Kind == "delivery" {
+			<div class="doc-form__section">Lines</div>
+			for i, l := range f.Lines {
+				<div class="doc-form__group">
+					<div class="doc-form__group-title">Line { i + 1 }</div>
+					<div class="doc-form__row">
+						<div class="form-field">
+							<label class="form-label">Item</label>
+							<input class="form-input" type="text" name={ "item_" + itoa(i) } value={ l.Item } placeholder="Description"/>
+						</div>
+						<div class="form-field">
+							<label class="form-label">Quantity</label>
+							<input class="form-input" type="text" name={ "qty_" + itoa(i) } value={ l.Qty } placeholder="1"/>
+						</div>
+						<div class="form-field">
+							<label class="form-label">Unit price</label>
+							<input class="form-input" type="text" name={ "price_" + itoa(i) } value={ l.Price } placeholder="0.00"/>
+						</div>
+						<div class="form-field">
+							<label class="form-label">VAT rate</label>
+							<select class="form-select" name={ "rate_" + itoa(i) }>
+								<option value="">None</option>
+								for _, o := range vatRateOptions() {
+									<option value={ o.Value } selected?={ o.Value == l.Rate }>{ o.Label }</option>
+								}
+							</select>
+						</div>
+					</div>
+				</div>
+			}
+		}
+
+		if f.Kind == "payment" {
+			<div class="doc-form__section">Amounts</div>
+			for i, l := range f.Lines {
+				<div class="doc-form__group">
+					<div class="doc-form__group-title">Line { i + 1 }</div>
+					<div class="doc-form__row doc-form__row--refs">
+						<div class="form-field">
+							<label class="form-label">Amount</label>
+							<input class="form-input" type="text" name={ "amount_" + itoa(i) } value={ l.Amount } placeholder="0.00"/>
+						</div>
+						<div class="form-field">
+							<label class="form-label">Referenced series</label>
+							<input class="form-input" type="text" name={ "ref_series_" + itoa(i) } value={ l.RefSeries } placeholder="FA"/>
+						</div>
+						<div class="form-field">
+							<label class="form-label">Referenced code</label>
+							<input class="form-input" type="text" name={ "ref_code_" + itoa(i) } value={ l.RefCode } placeholder="R-2026-011"/>
+						</div>
+					</div>
+				</div>
+			}
+			<div class="doc-form__section">Method</div>
+			<div class="form-field">
+				<label class="form-label" for="doc-method">Payment method</label>
+				<select class="form-select" id="doc-method" name="method_key">
+					for _, o := range paymentMethodOptions() {
+						<option value={ o.Value } selected?={ o.Value == f.MethodKey }>{ o.Label }</option>
+					}
+				</select>
+			</div>
+			<div class="form-field">
+				<label class="form-label" for="doc-method-amount">Method amount</label>
+				<input class="form-input" id="doc-method-amount" type="text" name="method_amount" value={ f.MethodAmount } placeholder="0.00"/>
+			</div>
+		}
+
+		if f.Kind == "status" {
+			<div class="doc-form__section">Status lines</div>
+			for i, l := range f.Lines {
+				<div class="doc-form__group">
+					<div class="doc-form__group-title">Line { i + 1 }</div>
+					<div class="doc-form__row doc-form__row--refs">
+						<div class="form-field">
+							<label class="form-label">Status</label>
+							<select class="form-select" name={ "linekey_" + itoa(i) }>
+								<option value="">None</option>
+								for _, o := range statusKeyOptions() {
+									<option value={ o.Value } selected?={ o.Value == l.LineKey }>{ o.Label }</option>
+								}
+							</select>
+						</div>
+						<div class="form-field">
+							<label class="form-label">Referenced series</label>
+							<input class="form-input" type="text" name={ "ref_series_" + itoa(i) } value={ l.RefSeries } placeholder="FA"/>
+						</div>
+						<div class="form-field">
+							<label class="form-label">Referenced code</label>
+							<input class="form-input" type="text" name={ "ref_code_" + itoa(i) } value={ l.RefCode } placeholder="R-2026-011"/>
+						</div>
+					</div>
+				</div>
+			}
+		}
+
+		<p class="doc-form__hint">Amounts are decimal strings (e.g. 100.00). Saving runs GOBL calculate + validate; failures come back with details.</p>
+		<div class="form-actions">
+			<button type="submit" class="btn btn--primary">{ f.Submit }</button>
+		</div>
+	</form>
+}
+
+templ NewDocSection(route string, one string, title string, f DocForm) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">New { one }</h1>
+			<p class="page-head__subtitle">Create a { title } document</p>
+		</div>
+		<div class="page-head__actions">
+			<a class="btn" href={ "/" + route }>Back to list</a>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card__body">
+			@DocFormBody(f)
+		</div>
+	</div>
+}
+
+templ EditDocSection(route string, one string, title string, id string, f DocForm) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">Edit { one }</h1>
+			<p class="page-head__subtitle">Update the { title } document</p>
+		</div>
+		<div class="page-head__actions">
+			<a class="btn" href={ "/" + route }>Back to list</a>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card__body">
+			@DocFormBody(f)
+		</div>
+	</div>
+}
+
+templ NewDocPage(route string, one string, title string, f DocForm) {
+	@Layout("new "+one+" · Ittisal Invoice", route) {
+		@NewDocSection(route, one, title, f)
+	}
+}
+
+templ EditDocPage(route string, one string, title string, id string, f DocForm) {
+	@Layout("edit "+one+" · Ittisal Invoice", route) {
+		@EditDocSection(route, one, title, id, f)
+	}
+}

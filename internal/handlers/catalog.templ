@@ -9,7 +9,11 @@ import (
 // are built with tiny helpers below.
 
 const (
-	dsNavInvoices  = "$nav = 'invoices'; @get('/partials/invoices')"
+	dsNavInvoices   = "$nav = 'invoices'; @get('/partials/invoices')"
+	dsNavOrders     = "$nav = 'orders'; @get('/partials/orders')"
+	dsNavDeliveries = "$nav = 'deliveries'; @get('/partials/deliveries')"
+	dsNavPayments   = "$nav = 'payments'; @get('/partials/payments')"
+	dsNavStatuses   = "$nav = 'statuses'; @get('/partials/statuses')"
 	dsNavCustomers = "$nav = 'customers'; @get('/partials/customers')"
 	dsNavSuppliers = "$nav = 'suppliers'; @get('/partials/suppliers')"
 	dsNavProducts  = "$nav = 'products'; @get('/partials/products')"
@@ -32,6 +36,28 @@ func dsEditGet(kind, id string) string {
 // modal, and refreshes the section.
 func dsUpdate(kind, id string) string {
 	return "$modalOpen = false; @post('/" + kind + "/" + id + "', {contentType: 'form'})"
+}
+
+// dsDocSubmit returns the expression that submits a document form to the
+// given action. The modal stays open until the server confirms success with
+// a `modalOpen: false` signal patch; failures re-render the form in place.
+func dsDocSubmit(action string) string {
+	return "@post('" + action + "', {contentType: 'form'})"
+}
+
+// dsDocNew opens the modal and loads the New form fragment for a kind.
+func dsDocNew(route, one string) string {
+	return "$modalTitle = 'New " + one + "'; $modalOpen = true; @get('/partials/" + route + "/new')"
+}
+
+// dsDocEdit opens the modal and loads the Edit form fragment for a document.
+func dsDocEdit(route, id, one string) string {
+	return "$modalTitle = 'Edit " + one + "'; $modalOpen = true; @get('/partials/" + route + "/" + id + "/edit')"
+}
+
+// dsNewCustomer opens the "new customer" modal from a document form.
+func dsNewCustomer(route string) string {
+	return "$modalTitle = 'New Customer'; @get('/partials/customers/new?for=" + route + "')"
 }
 
 // dsDelete returns the expression that confirms and deletes a row, then
@@ -352,4 +378,36 @@ templ ProductEditPage(p sqlc.Product, errMsg string) {
 			</div>
 		</div>
 	}
+}
+
+// CustomerCreateForm renders the compact "new customer" form used from the
+// document modal. On success the server re-renders the document form with
+// the new customer selected.
+templ CustomerCreateForm(f CustomerFormData) {
+	if f.Err != "" {
+		<div class="alert alert--error" role="alert">{ f.Err }</div>
+	}
+	<form method="post" action="/customers" class="form-grid" data-on:submit__prevent="@post('/customers', {contentType: 'form'})">
+		<input type="hidden" name="modal" value="1"/>
+		<input type="hidden" name="for" value={ f.For }/>
+		<div class="form-field form-field--full">
+			<label class="form-label" for="nc-name">Name</label>
+			<input class="form-input" id="nc-name" type="text" name="name" value={ f.Name } required/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="nc-country">Tax country</label>
+			<input class="form-input" id="nc-country" type="text" name="tax_country" value={ f.TaxCountry } placeholder="ES"/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="nc-code">Tax ID</label>
+			<input class="form-input" id="nc-code" type="text" name="tax_code" value={ f.TaxCode } placeholder="A12345674"/>
+		</div>
+		<div class="form-field form-field--full">
+			<label class="form-label" for="nc-email">Email</label>
+			<input class="form-input" id="nc-email" type="email" name="email" value={ f.Email }/>
+		</div>
+		<div class="form-actions">
+			<button type="submit" class="btn btn--primary">Create customer</button>
+		</div>
+	</form>
 }

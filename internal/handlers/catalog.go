@@ -9,3 +9,13 @@ func nsStr(s sql.NullString) string {
 	}
 	return s.String
 }
+
+// CustomerFormData carries the "new customer" modal form values.
+type CustomerFormData struct {
+	For        string // document route to return to ("orders", "invoices", …)
+	Name       string
+	TaxCountry string
+	TaxCode    string
+	Email      string
+	Err        string
+}

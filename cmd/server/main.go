@@ -1,13 +1,18 @@
 // Command server runs the Ittisal Invoice HTTP server built with Chi.
 //
-// Endpoints:
+// Endpoints (each of invoices, orders, deliveries, payments, statuses):
 //
 //	POST   /invoices[?dry_run=true|html=true]   create (calculate + validate + store)
 //	GET    /invoices                            list summaries
 //	GET    /invoices/{id}                       full envelope as JSON (source of truth)
 //	GET    /invoices/{id}/html[?locale|watermark|sandbox]  printable HTML + client-side PDF button
+//	GET    /invoices/{id}/envelope.json         download envelope
 //	DELETE /invoices/{id}                       delete (no legal cancellation semantics)
 //	GET    /healthz                             liveness probe
+//
+// Replace /invoices with /orders, /deliveries, /payments or /statuses for the
+// other bill documents. HTML pages live at /orders, /deliveries, /payments,
+// /statuses with Datastar partials under /partials/*.
 //
 // Persistence: SQLite by default (SQLITE_PATH, default goinvoice.db).
 // Set SQLITE_PATH=:memory: for tests. Goose migrations in db/migrations
@@ -84,26 +89,33 @@ func main() {
 	})
 
 	// Dump a full envelope to disk for inspection.
-	r.Get("/invoices/{id}/envelope.json", func(w http.ResponseWriter, req *http.Request) {
-		id := chi.URLParam(req, "id")
-		env, err := entries.Get(req.Context(), id)
-		if err != nil {
-			if errors.Is(err, store.ErrNotFound) {
+	envelopeDownload := func(kind string) http.HandlerFunc {
+		return func(w http.ResponseWriter, req *http.Request) {
+			id := chi.URLParam(req, "id")
+			env, err := entries.Get(req.Context(), id)
+			if err != nil {
+				if errors.Is(err, store.ErrNotFound) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"error": kind + " not found"})
+					return
+				}
 				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusNotFound)
-				_ = json.NewEncoder(w).Encode(map[string]string{"error": "invoice not found"})
+				w.WriteHeader(http.StatusInternalServerError)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
+			w.Header().Set("Content-Disposition", "attachment; filename="+id+".json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(env)
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Disposition", "attachment; filename="+id+".json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(env)
-	})
+	}
+	r.Get("/invoices/{id}/envelope.json", envelopeDownload("invoice"))
+	r.Get("/orders/{id}/envelope.json", envelopeDownload("order"))
+	r.Get("/deliveries/{id}/envelope.json", envelopeDownload("delivery"))
+	r.Get("/payments/{id}/envelope.json", envelopeDownload("payment"))
+	r.Get("/statuses/{id}/envelope.json", envelopeDownload("status"))
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {

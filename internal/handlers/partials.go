@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -29,10 +28,10 @@ func (h *Handler) InvoicesPartial(w http.ResponseWriter, r *http.Request) {
 			summaries = append(summaries, s)
 		}
 	}
-	fragmentHeaders(w, "#main")
-	if err := InvoicesSection(summaries, invoicer.SummarizeStats(summaries)).Render(r.Context(), w); err != nil {
-		log.Printf("render invoices partial: %v", err)
-	}
+	sseBegin(w)
+	sseSignals(w, `{"modalOpen": false}`)
+	sseElements(w, r, "#main", "inner", InvoicesSection(summaries, invoicer.SummarizeStats(summaries), true))
+	sseFlush(w)
 }
 
 // CustomersPartial renders the customers list fragment.
@@ -42,10 +41,7 @@ func (h *Handler) CustomersPartial(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#main")
-	if err := CustomersSection(rows, "").Render(r.Context(), w); err != nil {
-		log.Printf("render customers partial: %v", err)
-	}
+	respondFragment(w, r, "#main", CustomersSection(rows, ""))
 }
 
 // SuppliersPartial renders the suppliers list fragment.
@@ -55,10 +51,7 @@ func (h *Handler) SuppliersPartial(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#main")
-	if err := SuppliersSection(rows, "").Render(r.Context(), w); err != nil {
-		log.Printf("render suppliers partial: %v", err)
-	}
+	respondFragment(w, r, "#main", SuppliersSection(rows, ""))
 }
 
 // ProductsPartial renders the products list fragment.
@@ -68,10 +61,7 @@ func (h *Handler) ProductsPartial(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#main")
-	if err := ProductsSection(rows, "").Render(r.Context(), w); err != nil {
-		log.Printf("render products partial: %v", err)
-	}
+	respondFragment(w, r, "#main", ProductsSection(rows, ""))
 }
 
 // ProductModal returns the product edit form fragment for modal injection.
@@ -86,10 +76,7 @@ func (h *Handler) ProductModal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#modal-body")
-	if err := ProductForm(p, "").Render(r.Context(), w); err != nil {
-		log.Printf("render product modal: %v", err)
-	}
+	respondFragment(w, r, "#modal-body", ProductForm(p, ""))
 }
 
 // CustomerModal returns the customer edit form fragment for modal injection.
@@ -104,10 +91,7 @@ func (h *Handler) CustomerModal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#modal-body")
-	if err := CustomerForm(c, "").Render(r.Context(), w); err != nil {
-		log.Printf("render customer modal: %v", err)
-	}
+	respondFragment(w, r, "#modal-body", CustomerForm(c, ""))
 }
 
 // SupplierModal returns the supplier edit form fragment for modal injection.
@@ -122,8 +106,13 @@ func (h *Handler) SupplierModal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#modal-body")
-	if err := SupplierForm(sp, "").Render(r.Context(), w); err != nil {
-		log.Printf("render supplier modal: %v", err)
-	}
+	respondFragment(w, r, "#modal-body", SupplierForm(sp, ""))
+}
+
+// NewCustomerModal handles GET /partials/customers/new: the compact create
+// form rendered into the modal from a document form.
+func (h *Handler) NewCustomerModal(w http.ResponseWriter, r *http.Request) {
+	respondFragment(w, r, "#modal-body", CustomerCreateForm(CustomerFormData{
+		For: r.URL.Query().Get("for"),
+	}))
 }

@@ -174,3 +174,267 @@ pre.code {
 .data-table .num {
 	text-align: right;
 }
+
+/* ── Centered modal ──────────────────────────────────────────────────────
+   The pattika default slides a sheet in from the right edge. goinvoice uses
+   the same drawer for document forms, so override it into a normal centered
+   dialog. Higher specificity than the data-sidebar-variant rules. */
+:root[data-sidebar-variant] .admin-modal {
+	align-items: center;
+	justify-content: center;
+	padding: var(--space-4);
+}
+
+:root[data-sidebar-variant] .admin-modal .admin-modal__dialog {
+	width: min(720px, 100%);
+	height: auto;
+	max-height: min(88vh, 960px);
+	border: 1px solid var(--border);
+	border-left: 1px solid var(--border);
+	border-radius: var(--r-shell);
+	box-shadow: var(--shadow-popover-lg);
+	transform: translateY(10px) scale(0.98);
+	opacity: 0;
+	transition:
+		transform var(--modal-backdrop-t) var(--modal-backdrop-ease),
+		opacity var(--modal-backdrop-t) var(--modal-backdrop-ease);
+}
+
+:root[data-sidebar-variant] .admin-modal.is-open .admin-modal__dialog {
+	transform: none;
+	opacity: 1;
+}
+
+@media (max-width: 768px) {
+	:root[data-sidebar-variant] .admin-modal {
+		padding: var(--space-2);
+	}
+
+	:root[data-sidebar-variant] .admin-modal .admin-modal__dialog {
+		width: 100%;
+		max-height: 92vh;
+		border-radius: var(--r-card);
+		transform: translateY(8px) scale(0.98);
+	}
+}
+
+/* ── Document form layout ─────────────────────────────────────────────── */
+.doc-form {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3);
+	align-items: start;
+}
+
+.doc-form .form-field {
+	margin-bottom: 0;
+	min-width: 0;
+}
+
+.doc-form .form-field--full {
+	grid-column: 1 / -1;
+}
+
+.doc-form__section {
+	grid-column: 1 / -1;
+	margin: var(--space-1) 0 0;
+	padding-top: var(--space-3);
+	border-top: 1px solid var(--border);
+	font-size: var(--text-micro);
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.doc-form__section:first-child {
+	margin-top: 0;
+	padding-top: 0;
+	border-top: 0;
+}
+
+.doc-form__group {
+	grid-column: 1 / -1;
+	display: grid;
+	gap: var(--space-2);
+	padding: var(--space-3);
+	border: 1px solid var(--border);
+	border-radius: var(--r-md);
+	background: var(--bg-muted);
+}
+
+.doc-form__group-title {
+	font-size: var(--text-micro);
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.doc-form__row {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+	gap: var(--space-2);
+	align-items: start;
+}
+
+.doc-form__row--refs {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.doc-form__hint {
+	grid-column: 1 / -1;
+	margin: 0;
+	font-size: var(--text-micro);
+	color: var(--text-muted);
+}
+
+.doc-form .form-actions {
+	grid-column: 1 / -1;
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--space-2);
+	margin-top: var(--space-1);
+}
+
+@media (max-width: 560px) {
+	.doc-form {
+		grid-template-columns: 1fr;
+	}
+
+	.doc-form__row,
+	.doc-form__row--refs {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ── Searchable combobox (customer picker) ────────────────────────────── */
+.combo {
+	position: relative;
+}
+
+.combo__input {
+	padding-right: calc(var(--space-3) + 24px);
+}
+
+.combo__toggle {
+	position: absolute;
+	top: 50%;
+	right: 8px;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--r-sm);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.combo__toggle:hover {
+	color: var(--text);
+	background: var(--hover-subtle);
+}
+
+.combo__toggle .bx {
+	font-size: 18px;
+	transition: transform var(--t-fast) var(--ease-out);
+}
+
+.combo.is-open .combo__toggle .bx {
+	transform: rotate(180deg);
+}
+
+.combo__list {
+	position: absolute;
+	z-index: 80;
+	top: calc(100% + 4px);
+	left: 0;
+	right: 0;
+	max-height: 220px;
+	overflow-y: auto;
+	padding: 4px;
+	background: var(--bg-popover);
+	border: 1px solid var(--border);
+	border-radius: var(--r-md);
+	box-shadow: var(--shadow-popover-lg);
+}
+
+.combo__list[hidden] {
+	display: none;
+}
+
+.combo__option {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	width: 100%;
+	padding: 8px 10px;
+	border: 0;
+	border-radius: var(--r-sm);
+	background: transparent;
+	color: var(--text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.combo__option:hover,
+.combo__option.is-active {
+	background: var(--hover);
+}
+
+.combo__option[hidden] {
+	display: none;
+}
+
+.combo__meta {
+	flex-shrink: 0;
+	font-size: var(--text-micro);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.combo__empty {
+	padding: 8px 10px;
+	font-size: var(--text-micro);
+	color: var(--text-muted);
+}
+
+/* Compact secondary button and label row used by the document form. */
+.btn--sm {
+	padding: 2px 10px;
+	font-size: var(--text-micro);
+	min-height: 26px;
+}
+
+/* Keep the customer picker and its "New customer" action on one row. */
+.customer-picker {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.customer-picker .combo {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.customer-picker .btn {
+	flex: 0 0 auto;
+	align-self: center;
+	white-space: nowrap;
+}
+
+.form-hint {
+	margin: var(--space-1) 0 0;
+	font-size: var(--text-micro);
+	color: var(--text-muted);
+}

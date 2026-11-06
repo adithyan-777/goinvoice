@@ -1,0 +1,21 @@
+{
+  "type": "receipt",
+  "series": "RC",
+  "code": "RC-2026-001",
+  "issue_date": "2026-11-05",
+  "currency": "EUR",
+  "supplier": {
+    "name": "Acme Consultancy SL",
+    "tax_id": { "country": "ES", "code": "B98602642" }
+  },
+  "customer": {
+    "name": "Globex Ibérica SA",
+    "tax_id": { "country": "ES", "code": "A12345674" }
+  },
+  "lines": [
+    { "amount": "1210.00", "document": { "series": "FA", "code": "R-2026-011" } }
+  ],
+  "methods": [
+    { "key": "credit-transfer", "amount": "1210.00" }
+  ]
+}

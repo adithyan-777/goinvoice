@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/invopop/gobl/bill"
 
 	"github.com/neo/goinvoice/internal/db/sqlc"
 	"github.com/neo/goinvoice/internal/invoicer"
@@ -58,18 +57,86 @@ func (h *Handler) Register(r chi.Router) {
 	r.Post("/products/{id}/delete", h.DeleteProductForm)
 	r.Delete("/products/{id}", h.DeleteProduct)
 	r.Get("/partials/invoices", h.InvoicesPartial)
+	r.Get("/partials/orders", h.OrdersPartial)
+	r.Get("/partials/deliveries", h.DeliveriesPartial)
+	r.Get("/partials/payments", h.PaymentsPartial)
+	r.Get("/partials/statuses", h.StatusesPartial)
+	r.Get("/partials/invoices/new", h.NewInvoiceModal)
+	r.Get("/partials/invoices/{id}/edit", h.EditInvoiceModal)
+	r.Get("/partials/orders/new", h.NewOrderModal)
+	r.Get("/partials/orders/{id}/edit", h.EditOrderModal)
+	r.Get("/partials/deliveries/new", h.NewDeliveryModal)
+	r.Get("/partials/deliveries/{id}/edit", h.EditDeliveryModal)
+	r.Get("/partials/payments/new", h.NewPaymentModal)
+	r.Get("/partials/payments/{id}/edit", h.EditPaymentModal)
+	r.Get("/partials/statuses/new", h.NewStatusModal)
+	r.Get("/partials/statuses/{id}/edit", h.EditStatusModal)
 	r.Get("/partials/customers", h.CustomersPartial)
 	r.Get("/partials/suppliers", h.SuppliersPartial)
 	r.Get("/partials/products", h.ProductsPartial)
 	r.Get("/partials/products/{id}/form", h.ProductModal)
+	r.Get("/partials/customers/new", h.NewCustomerModal)
 	r.Get("/partials/customers/{id}/form", h.CustomerModal)
 	r.Get("/partials/suppliers/{id}/form", h.SupplierModal)
 	r.Route("/invoices", func(r chi.Router) {
 		r.Post("/", h.Create)
 		r.Get("/", h.List)
+		r.Get("/new", h.NewInvoicePage)
 		r.Get("/{id}", h.Get)
 		r.Get("/{id}/html", h.HTML)
+		r.Get("/{id}/edit", h.EditInvoiceForm)
+		r.Post("/{id}", h.UpdateInvoice)
+		r.Put("/{id}", h.UpdateInvoice)
+		r.Post("/{id}/delete", h.DeleteInvoiceForm)
 		r.Delete("/{id}", h.Delete)
+	})
+	r.Route("/orders", func(r chi.Router) {
+		r.Post("/", h.CreateOrder)
+		r.Get("/", h.ListOrders)
+		r.Get("/new", h.NewOrderPage)
+		r.Get("/{id}", h.GetOrder)
+		r.Get("/{id}/html", h.OrderHTML)
+		r.Get("/{id}/edit", h.EditOrderForm)
+		r.Post("/{id}", h.UpdateOrder)
+		r.Put("/{id}", h.UpdateOrder)
+		r.Post("/{id}/delete", h.DeleteOrderForm)
+		r.Delete("/{id}", h.DeleteOrder)
+	})
+	r.Route("/deliveries", func(r chi.Router) {
+		r.Post("/", h.CreateDelivery)
+		r.Get("/", h.ListDeliveries)
+		r.Get("/new", h.NewDeliveryPage)
+		r.Get("/{id}", h.GetDelivery)
+		r.Get("/{id}/html", h.DeliveryHTML)
+		r.Get("/{id}/edit", h.EditDeliveryForm)
+		r.Post("/{id}", h.UpdateDelivery)
+		r.Put("/{id}", h.UpdateDelivery)
+		r.Post("/{id}/delete", h.DeleteDeliveryForm)
+		r.Delete("/{id}", h.DeleteDelivery)
+	})
+	r.Route("/payments", func(r chi.Router) {
+		r.Post("/", h.CreatePayment)
+		r.Get("/", h.ListPayments)
+		r.Get("/new", h.NewPaymentPage)
+		r.Get("/{id}", h.GetPayment)
+		r.Get("/{id}/html", h.PaymentHTML)
+		r.Get("/{id}/edit", h.EditPaymentForm)
+		r.Post("/{id}", h.UpdatePayment)
+		r.Put("/{id}", h.UpdatePayment)
+		r.Post("/{id}/delete", h.DeletePaymentForm)
+		r.Delete("/{id}", h.DeletePayment)
+	})
+	r.Route("/statuses", func(r chi.Router) {
+		r.Post("/", h.CreateStatus)
+		r.Get("/", h.ListStatuses)
+		r.Get("/new", h.NewStatusPage)
+		r.Get("/{id}", h.GetStatus)
+		r.Get("/{id}/html", h.StatusHTML)
+		r.Get("/{id}/edit", h.EditStatusForm)
+		r.Post("/{id}", h.UpdateStatus)
+		r.Put("/{id}", h.UpdateStatus)
+		r.Post("/{id}/delete", h.DeleteStatusForm)
+		r.Delete("/{id}", h.DeleteStatus)
 	})
 }
 
@@ -83,56 +150,21 @@ func writeError(w http.ResponseWriter, status int, err error) {
 	writeJSON(w, status, map[string]string{"error": err.Error()})
 }
 
-// Create handles POST /invoices.
+// Create handles POST /invoices from JSON API clients and the UI form.
 //
-// Accepts a bill.Invoice-shaped JSON body. GOBL fills in totals, taxes and
-// validation errors are reported with 422 so clients can distinguish them
-// from malformed JSON (400).
+// Accepts a bill.Invoice-shaped JSON body (or structured form fields from
+// the UI). GOBL fills in totals and taxes; validation errors are reported
+// with 422 so clients can distinguish them from malformed JSON (400).
 //
 // Query params:
 //   - dry_run=true  → calculate + validate, but don't store. Returns the envelope.
 //   - html=true     → also store AND return the rendered HTML document.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	inv := new(bill.Invoice)
-	// GOBL's num.Amount expects strings ("100.00") to avoid float precision
-	// issues — clients must send amounts as JSON strings, not numbers.
-	if err := json.NewDecoder(r.Body).Decode(inv); err != nil {
-		writeError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	env, err := invoicer.Build(inv)
-	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, err)
-		return
-	}
-
-	id := invoicer.ID(env)
-
-	if r.URL.Query().Get("dry_run") == "true" {
-		writeJSON(w, http.StatusOK, map[string]any{"id": id, "envelope": env})
-		return
-	}
-
-	if err := h.entries.Put(r.Context(), id, env); err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	if r.URL.Query().Get("html") == "true" {
-		w.Header().Set("Location", "/invoices/"+id+"/html")
-		writeJSON(w, http.StatusCreated, map[string]any{
-			"id":       id,
-			"summary":  invoicer.Summarize(env),
-			"html_url": "/invoices/" + id + "/html",
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusCreated, map[string]any{"id": id, "envelope": env})
+	h.createBillDoc(invoicer.KindInvoice)(w, r)
 }
 
-// List handles GET /invoices and returns compact summaries.
+// List handles GET /invoices: browsers get the invoices page, API clients
+// get compact summaries as JSON.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	raw, err := h.entries.List(r.Context())
 	if err != nil {
@@ -144,6 +176,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		if s := invoicer.Summarize(e.Envelope); s != nil {
 			out = append(out, s)
 		}
+	}
+	if isBrowserPage(r) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := InvoicesPage(out, invoicer.SummarizeStats(out)).Render(r.Context(), w); err != nil {
+			log.Printf("render invoices page: %v", err)
+		}
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
 }
@@ -158,6 +197,10 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if invoicer.DocumentKind(env) != invoicer.KindInvoice {
+		writeError(w, http.StatusNotFound, store.ErrNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"id": id, "envelope": env})
@@ -175,6 +218,10 @@ func (h *Handler) HTML(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if invoicer.DocumentKind(env) != invoicer.KindInvoice {
+		writeError(w, http.StatusNotFound, store.ErrNotFound)
 		return
 	}
 
@@ -251,6 +298,19 @@ func injectPDFToolbar(html []byte, id string) []byte {
 // Delete handles DELETE /invoices/{id}.
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	env, err := h.entries.Get(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, err)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if invoicer.DocumentKind(env) != invoicer.KindInvoice {
+		writeError(w, http.StatusNotFound, store.ErrNotFound)
+		return
+	}
 	ok, err := h.entries.Delete(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -372,15 +432,6 @@ func wantsFragment(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Accept"), "text/event-stream")
 }
 
-// fragmentHeaders tells Datastar where to swap an HTML fragment:
-// Datastar-Selector picks the target, Datastar-Mode inner replaces its
-// content. Plain (non-Datastar) clients ignore these headers.
-func fragmentHeaders(w http.ResponseWriter, selector string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Datastar-Selector", selector)
-	w.Header().Set("Datastar-Mode", "inner")
-}
-
 // renderCustomersFragment writes the customers section for Datastar swaps.
 func (h *Handler) renderCustomersFragment(w http.ResponseWriter, r *http.Request, errMsg string) {
 	rows, err := h.catalog.ListCustomers(r.Context())
@@ -388,10 +439,7 @@ func (h *Handler) renderCustomersFragment(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#main")
-	if err := CustomersSection(rows, errMsg).Render(r.Context(), w); err != nil {
-		log.Printf("render customers fragment: %v", err)
-	}
+	respondFragment(w, r, "#main", CustomersSection(rows, errMsg))
 }
 
 // renderSuppliersFragment writes the suppliers section for Datastar swaps.
@@ -401,10 +449,7 @@ func (h *Handler) renderSuppliersFragment(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#main")
-	if err := SuppliersSection(rows, errMsg).Render(r.Context(), w); err != nil {
-		log.Printf("render suppliers fragment: %v", err)
-	}
+	respondFragment(w, r, "#main", SuppliersSection(rows, errMsg))
 }
 
 // renderProductsFragment writes the products section for Datastar swaps.
@@ -414,10 +459,7 @@ func (h *Handler) renderProductsFragment(w http.ResponseWriter, r *http.Request,
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	fragmentHeaders(w, "#main")
-	if err := ProductsSection(rows, errMsg).Render(r.Context(), w); err != nil {
-		log.Printf("render products fragment: %v", err)
-	}
+	respondFragment(w, r, "#main", ProductsSection(rows, errMsg))
 }
 
 // conflictMessage maps UNIQUE violations to a friendly duplicate message.
@@ -672,6 +714,24 @@ func decodeParty(r *http.Request) (partyFields, bool, error) {
 
 // CreateCustomer handles POST /customers, from the HTML form and JSON API.
 func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
+	// When invoked from a document form's "New customer" modal, the created
+	// customer is fed straight back into the document form.
+	forRoute := r.FormValue("for")
+	renderCreateErr := func(msg string) {
+		if forRoute != "" && wantsFragment(r) {
+			respondFragment(w, r, "#modal-body", CustomerCreateForm(CustomerFormData{
+				For:        forRoute,
+				Name:       strings.TrimSpace(r.FormValue("name")),
+				TaxCountry: strings.TrimSpace(r.FormValue("tax_country")),
+				TaxCode:    strings.TrimSpace(r.FormValue("tax_code")),
+				Email:      strings.TrimSpace(r.FormValue("email")),
+				Err:        msg,
+			}))
+			return
+		}
+		h.renderCustomersFragment(w, r, msg)
+	}
+
 	f, isJSON, err := decodeParty(r)
 	if err != nil {
 		if isJSON {
@@ -679,7 +739,7 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if wantsFragment(r) {
-			h.renderCustomersFragment(w, r, err.Error())
+			renderCreateErr(err.Error())
 			return
 		}
 		http.Redirect(w, r, "/customers?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
@@ -702,7 +762,7 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := conflictMessage(err, "customer tax code already exists")
 		if wantsFragment(r) {
-			h.renderCustomersFragment(w, r, msg)
+			renderCreateErr(msg)
 			return
 		}
 		http.Redirect(w, r, "/customers?error="+url.QueryEscape(msg), http.StatusSeeOther)
@@ -710,6 +770,10 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 	}
 	if isJSON {
 		writeJSON(w, http.StatusCreated, map[string]any{"id": c.ID, "name": c.Name})
+		return
+	}
+	if forRoute != "" && wantsFragment(r) {
+		h.renderDocFormModal(w, r, kindForRoute(forRoute), c.ID)
 		return
 	}
 	if wantsFragment(r) {
@@ -1018,8 +1082,9 @@ func (h *Handler) DeleteSupplierForm(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/suppliers", http.StatusSeeOther)
 }
 
-// Index handles GET / and renders a simple browsable list of stored invoices
-// with links to the printable HTML view and the raw envelope JSON.
+// Index handles GET / and renders the dashboard: document-kind overview
+// cards plus the browsable invoice list with links to the printable HTML
+// view and the raw envelope JSON.
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 	raw, err := h.entries.List(r.Context())
 	if err != nil {
@@ -1033,7 +1098,7 @@ func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := IndexPage(summaries, invoicer.SummarizeStats(summaries)).Render(r.Context(), w); err != nil {
+	if err := IndexPage(summaries, invoicer.SummarizeStats(summaries), docOverviews(raw)).Render(r.Context(), w); err != nil {
 		// Render streams directly; on failure output may be partial.
 		// Just log — the status line is already committed.
 		log.Printf("render index: %v", err)

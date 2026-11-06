@@ -13,6 +13,9 @@ var datastarJS []byte
 //go:embed static/goinvoice.css
 var goinvoiceCSS []byte
 
+//go:embed static/goinvoice.js
+var goinvoiceJS []byte
+
 //go:embed static/pattika/css/tokens.css
 var pattikaTokens []byte
 
@@ -53,6 +56,7 @@ var pattikaFiles = map[string]struct {
 	"/static/pattika/css/utilities.css":  {pattikaUtilities, "text/css; charset=utf-8"},
 	"/static/pattika/js/theme.js":        {pattikaThemeJS, "text/javascript; charset=utf-8"},
 	"/static/goinvoice.css":              {goinvoiceCSS, "text/css; charset=utf-8"},
+	"/static/goinvoice.js":               {goinvoiceJS, "text/javascript; charset=utf-8"},
 }
 
 // Static serves the bundled assets so the binary stays self-contained.

@@ -1,0 +1,16 @@
+{
+  "type": "response",
+  "code": "ST-2026-001",
+  "issue_date": "2026-11-05",
+  "supplier": {
+    "name": "Acme Consultancy SL",
+    "tax_id": { "country": "ES", "code": "B98602642" }
+  },
+  "customer": {
+    "name": "Globex Ibérica SA",
+    "tax_id": { "country": "ES", "code": "A12345674" }
+  },
+  "lines": [
+    { "key": "accepted", "doc": { "series": "FA", "code": "R-2026-011" } }
+  ]
+}

@@ -18,11 +18,18 @@ internal/store/      in-memory envelope store (swap with Postgres later)
 examples/            sample request bodies
 ```
 
-`GET /` is rendered with templ (`IndexPage`); `GET /invoices/{id}/html`
+`GET /` is rendered with templ (`IndexPage`) as a dashboard: one card per
+bill document kind (invoices, orders, deliveries, payments, statuses) with
+stored counts, plus the invoice table.
+`GET /invoices/{id}/html`
 delegates to `gobl.html` (itself templ-based) for the printable invoice document.
 `GET /customers`, `/suppliers` and `/products` render the seeded catalog
 tables (`catalog.templ`); demo rows come from `db/migrations/00003_*` and
 demo invoices are built via GOBL on first boot (`internal/seed`).
+`GET /orders`, `/deliveries`, `/payments`, `/statuses` render the matching
+document list (`documents.templ`) with view/JSON-download links and inline
+delete per row; the same URLs serve the JSON API to non-browser clients
+(content negotiation on `Accept: text/html`).
 
 Design: the app shell (sidebar, topbar, cards, tables, modal drawer,
 dark mode, theme engine) follows `../qatar/pattika` structure and
@@ -65,10 +72,28 @@ newer templ runtimes break its generated code (`templ.JoinURLErrs` undefined).
 
 ## API
 
+All five `bill` documents share the same shape — replace `/invoices` with
+`/orders`, `/deliveries`, `/payments` or `/statuses`:
+
+| Document   | Types                              | Example                                              |
+| ---------- | ---------------------------------- | ---------------------------------------------------- |
+| `invoice`  | `standard\|proforma\|corrective\|credit-note\|debit-note\|other` | [`sample-invoice.json`](examples/sample-invoice.json) |
+| `order`    | `purchase\|sale\|quote`             | [`sample-order.json`](examples/sample-order.json)     |
+| `delivery` | `advice\|note\|waybill\|receipt\|other` | [`sample-delivery.json`](examples/sample-delivery.json) |
+| `payment`  | `request\|receipt\|advice`          | [`sample-payment.json`](examples/sample-payment.json) |
+| `status`   | `response\|update\|system`          | [`sample-status.json`](examples/sample-status.json)   |
+
+HTML pages live at `/orders`, `/deliveries`, `/payments`, `/statuses`
+(Datastar partials under `/partials/orders`, …). Summaries carry a
+`document` field (`invoice|order|…`) plus `type`, totals and digest;
+each collection only lists its own kind (cross-kind `GET` → `404`).
+
 ### Create — `POST /invoices`
 
 Body: a `bill.Invoice`-shaped JSON document, e.g.
 [`examples/sample-invoice.json`](examples/sample-invoice.json).
+Same for `POST /orders` (`bill.Order`), `/deliveries` (`bill.Delivery`),
+`/payments` (`bill.Payment`), `/statuses` (`bill.Status`).
 
 | Query param   | Effect                                                        |
 | ------------- | ------------------------------------------------------------- |
@@ -94,10 +119,11 @@ curl -s -X POST http://localhost:8080/invoices \
 
 ### Read — `GET /invoices`, `GET /invoices/{id}`, `GET /invoices/{id}/envelope.json`
 
-List returns compact summaries (id, code, currency, totals, digest); `/{id}` returns the
-full envelope; `/envelope.json` downloads it.
+List returns compact summaries (document, id, code, currency, totals, digest);
+`/{id}` returns the full envelope; `/envelope.json` downloads it.
+Same under `/orders`, `/deliveries`, `/payments`, `/statuses`.
 
-### Render — `GET /invoices/{id}/html[?...]`
+### Render — `GET /invoices/{id}/html[?...]` (also `/orders/{id}/html`, …)
 
 Returns `text/html` with stylesheets embedded plus a floating
 **Download PDF** button. Clicking it converts the invoice to PDF entirely
@@ -114,9 +140,46 @@ in the browser via [html2pdf.js](https://cdnjs.com/libraries/html2pdf.js)
 curl -s "http://localhost:8080/invoices/$ID/html?locale=es&watermark=DRAFT" -o inv.html
 ```
 
-### Delete — `DELETE /invoices/{id}`
+### Delete — `DELETE /invoices/{id}` (also `/orders/{id}`, …)
 
 Removes the entry (no legal cancellation semantics — use GOBL credit notes for that).
+
+### Update — `PUT /invoices/{id}` (also `POST`, also `/orders/{id}`, …)
+
+Body: the full replacement document. It is rebuilt through calculate +
+validate and stored under the **same id** (links stay stable).
+
+- `200` — `{ "id": <same uuid>, "envelope": {...} }`.
+- `400` — malformed JSON; `404` — unknown id or wrong kind; `422` — GOBL validation failures.
+
+```bash
+curl -s -X PUT http://localhost:8080/orders/$ID \
+  -H 'Content-Type: application/json' \
+  -d @examples/sample-order.json
+```
+
+### UI — modal forms for every kind
+
+Every kind — invoices, orders, deliveries, payments, statuses — has a
+**New** button and an **Edit** button per row. Both open a centered modal
+with a structured form (type dropdown, series/code, date, currency,
+supplier/customer with tax IDs, and up to three line rows; the customer
+field is a searchable dropdown fed by the customers catalog, and selecting
+one fills its tax ID (also resolved server-side on save); invoices support
+all invoice types including credit/debit notes; payments also get method +
+amount, statuses get status keys). Submitting posts form fields to the same
+`POST` endpoints — JSON API clients are unaffected.
+
+Behavior:
+
+- Success closes the modal and refreshes the list in place.
+- Validation failures keep the modal open and re-render the form with the
+  error and the user's input intact.
+- Without JavaScript the same forms are served as full pages at
+  `/{route}/new` and `/{route}/{id}/edit` and follow PRG redirects.
+- Datastar fragments are streamed as SSE `datastar-patch-elements` /
+  `datastar-patch-signals` events (what the vendored Datastar v1.0.4 client
+  understands), under `/{route}` and `/partials/*`.
 
 ## Client rules (things GOBL is strict about)
 
