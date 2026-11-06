@@ -1,0 +1,271 @@
+package org
+
+import (
+	"context"
+	"fmt"
+	"slices"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl.html/components/regimes/sg"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl.html/components/taxid"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/org"
+)
+
+templ Party(party *org.Party) {
+	<div class="org-party">
+		@t.Scope("org.party") {
+			if party.Name != "" {
+				<div class="name">{ party.Name }</div>
+			}
+			if party.Alias != "" {
+				<div class="alias">{ party.Alias }</div>
+			}
+			@people(party.People)
+			@addresses(party.Addresses)
+			@telephones(party.Telephones)
+			@emails(party.Emails)
+			@websites(party.Websites)
+			@taxID(party)
+			@partyExtensions(party)
+			@identities(party)
+			@registration(party.Registration)
+		}
+		{ children... }
+	</div>
+}
+
+templ taxID(party *org.Party) {
+	if showTaxID(party) {
+		{{ tID := taxid.Format(ctx, party.TaxID) }}
+		<div class="tax-id">
+			if tID.Country == "" {
+				@t.T(".tax_id_no_country", i18n.M{"label": tID.Label, "code": tID.Code})
+			} else {
+				@t.T(".tax_id", i18n.M{"label": tID.Label, "country": tID.Country, "code": tID.Code})
+			}
+		</div>
+	}
+}
+
+templ people(people []*org.Person) {
+	for _, p := range people {
+		if n := personName(p); n != "" {
+			<div class="person">
+				if p.Label != "" {
+					@t.T(".person_label", i18n.M{"label": p.Label, "name": n})
+				} else {
+					@t.T(".person", i18n.M{"name": n})
+				}
+			</div>
+		}
+	}
+}
+
+templ addresses(addrs []*org.Address) {
+	for _, a := range addrs {
+		@AddressWithLabel(a)
+	}
+}
+
+templ telephones(tels []*org.Telephone) {
+	for _, tel := range tels {
+		<div class="telephone">
+			if tel.Label != "" {
+				@t.T(".tel_label", i18n.M{"num": tel.Number, "label": tel.Label})
+			} else {
+				@t.T(".tel", i18n.M{"num": tel.Number})
+			}
+		</div>
+	}
+}
+
+templ emails(emails []*org.Email) {
+	if len(emails) > 0 {
+		<div class="emails">
+			@t.N(".email", len(emails), i18n.M{"addr": emailAddresses(ctx, emails)})
+		</div>
+	}
+}
+
+templ websites(websites []*org.Website) {
+	for _, web := range websites {
+		<div class="website">
+			if web.Label != "" {
+				@t.T(".website_label", i18n.M{"label": web.Label, "url": web.URL})
+			} else {
+				@t.T(".website", i18n.M{"url": web.URL})
+			}
+		</div>
+	}
+}
+
+templ identities(party *org.Party) {
+	for _, ident := range party.Identities {
+		if showIdentity(ident) && !sg.HideIdentity(party, ident) {
+			<div class="identity">
+				@t.T(".identity", i18n.M{"label": identityLabel(ctx, party, ident), "code": ident.Code})
+			</div>
+		}
+	}
+}
+
+templ registration(reg *org.Registration) {
+	if reg != nil {
+		@t.Scope(".reg") {
+			<div class="registration">
+				<span>
+					@t.T(".registration")
+				</span>
+				if reg.Office != "" {
+					<span class="office">
+						{ reg.Office }
+					</span>
+				}
+				if reg.Book != "" {
+					<span class="book">
+						@t.T(".book", i18n.M{"id": reg.Book})
+					</span>
+				}
+				if reg.Volume != "" {
+					<span class="volume">
+						@t.T(".volume", i18n.M{"id": reg.Volume})
+					</span>
+				}
+				if reg.Sheet != "" {
+					<span class="sheet">
+						@t.T(".sheet", i18n.M{"id": reg.Sheet})
+					</span>
+				}
+				if reg.Section != "" {
+					<span class="section">
+						@t.T(".section", i18n.M{"id": reg.Section})
+					</span>
+				}
+				if reg.Page != "" {
+					<span class="page">
+						@t.T(".page", i18n.M{"id": reg.Page})
+					</span>
+				}
+				if reg.Entry != "" {
+					<span class="entry">
+						@t.T(".entry", i18n.M{"id": reg.Entry})
+					</span>
+				}
+				if reg.Other != "" {
+					<span class="other">
+						{ reg.Other }
+					</span>
+				}
+			</div>
+			if a := registrationCapital(ctx, reg); a != "" {
+				<div class="capital">
+					@t.T(".capital", i18n.M{"amount": a})
+				</div>
+			}
+		}
+	}
+}
+
+templ partyExtensions(party *org.Party) {
+	for _, k := range party.Ext.Keys() {
+		if txt := mapPartyExtension(ctx, k, party.Ext.Get(k)); txt != "" {
+			<div class="party-extension">
+				{ txt }
+			</div>
+		}
+	}
+}
+
+func personName(p *org.Person) string {
+	n := p.Name
+	nom := []string{
+		n.Prefix,
+		n.Given,
+		n.Middle,
+		n.Surname,
+		n.Surname2,
+		n.Suffix,
+	}
+	nom = slices.DeleteFunc(nom, func(s string) bool {
+		return s == ""
+	})
+	return strings.Join(nom, " ")
+}
+
+func emailAddresses(ctx context.Context, emails []*org.Email) string {
+	str := make([]string, len(emails))
+	for i, e := range emails {
+		str[i] = emailAddress(ctx, e)
+	}
+	return strings.Join(str, ", ")
+}
+
+func emailAddress(ctx context.Context, email *org.Email) string {
+	if email.Label != "" {
+		return i18n.T(ctx, ".email_label", i18n.M{"addr": email.Address, "label": email.Label})
+	}
+	return email.Address
+}
+
+func identityLabel(ctx context.Context, party *org.Party, ident *org.Identity) string {
+	if ident.Label != "" {
+		return ident.Label
+	}
+	if lbl := sg.IdentityLabel(party, ident); lbl != "" {
+		return lbl
+	}
+	if ident.Type != "" {
+		return ident.Type.String()
+	}
+	if ident.Key != "" {
+		label := i18n.T(ctx, fmt.Sprintf(".identity_labels.%s", ident.Key))
+		if !strings.HasPrefix(label, "!") {
+			return label
+		}
+		return identityKeyLabel(ident.Key)
+	}
+	return i18n.T(ctx, ".identity_code")
+}
+
+// identityKeyLabel converts an identity key into a presentable label
+// in sentence case, e.g. "internal-ref" becomes "Internal ref".
+func identityKeyLabel(key cbc.Key) string {
+	label := strings.NewReplacer("-", " ", "+", " ").Replace(key.String())
+	r, size := utf8.DecodeRuneInString(label)
+	if r == utf8.RuneError {
+		return label
+	}
+	return string(unicode.ToUpper(r)) + label[size:]
+}
+
+func showIdentity(ident *org.Identity) bool {
+	return ident.Label != "" || ident.Type != "" || ident.Key != ""
+}
+
+func showTaxID(party *org.Party) bool {
+	return party.TaxID != nil && party.TaxID.Code != cbc.CodeEmpty
+}
+
+func mapPartyExtension(ctx context.Context, k cbc.Key, v cbc.Code) string {
+	// find the key translation
+	label := i18n.T(ctx, ".ext_map."+k.String())
+	if !strings.HasPrefix(label, "!") { // if match found
+		return i18n.T(ctx, ".ext", i18n.M{"label": label, "value": v.String()})
+	}
+	return ""
+}
+
+func registrationCapital(ctx context.Context, reg *org.Registration) string {
+	if reg.Capital != nil {
+		if reg.Currency != "" {
+			return t.LocalizeCurrency(ctx, *reg.Capital, reg.Currency)
+		}
+		return t.LocalizeMoney(ctx, *reg.Capital)
+	}
+	return ""
+}

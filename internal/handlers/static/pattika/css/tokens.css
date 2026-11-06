@@ -1,0 +1,179 @@
+/*
+  Design tokens — ITTISAL maroon (#8A1538) with rose-tinted neutrals.
+*/
+
+:root {
+  color-scheme: light dark;
+
+  /*
+    Dark:  sidebar/main-scroll #262626 · cards #1B1B1B · borders #3E3E38 · nav active #383838
+    Light: panels #FAF7F8 · elevated/shell #F3EFF1 · borders #E8E0E3 · nav active #EBE4E7
+  */
+  --canvas:             light-dark(#FAF7F8, #1B1B1B);
+  --bg-shell:           light-dark(#F3EFF1, #1B1B1B);
+  --bg:                 light-dark(#FAF7F8, #262626);
+  --bg-sidebar:         light-dark(#FAF7F8, #262626);
+  --bg-elevated:        light-dark(#FFFBFC, #1B1B1B);
+  --bg-prompt:          light-dark(#F3EFF1, #1B1B1B);
+  --bg-muted:           light-dark(#F3EFF1, #1B1B1B);
+  --bg-popover:         light-dark(#FFFBFC, #1B1B1B);
+  --surface:            var(--bg-elevated);
+  --surface-secondary:  light-dark(#EBE4E7, #383838);
+
+  /* Interaction / nav */
+  --nav-active:         light-dark(#EBE4E7, #383838);
+  --hover:              light-dark(#EBE4E7, #383838);
+  --hover-strong:       light-dark(#E0D6DA, #424242);
+  --hover-subtle:       light-dark(#F5F0F2, rgba(56, 56, 56, 0.72));
+  --active-bg:          var(--nav-active);
+
+  /* Borders / focus */
+  --border:             light-dark(#E8E0E3, #3E3E38);
+  --border-header:      light-dark(#E8E0E3, #3E3E38);
+  --input:              light-dark(#81767B, #98938D);
+  --ring:               light-dark(#8A1538, #E8A0B4);
+
+  /* Text */
+  --text:               light-dark(#3A2F33, #C3C1BA);
+  --text-muted:         light-dark(#665B60, #B6ADB1);
+  --text-dim:           var(--text-muted);
+  --text-faint:         var(--text-muted);
+  --text-warm:          var(--accent-text);
+  --text-inverse:       #ffffff;
+  --scrollbar-thumb:    color-mix(in srgb, var(--text-muted) 72%, var(--bg-shell));
+
+  /* Brand — ITTISAL maroon */
+  --accent:             #8A1538;
+  --accent-text:        light-dark(#8A1538, #E8A0B4);
+  --accent-outline:     light-dark(transparent, #E8A0B4);
+  --accent-hover:       light-dark(#731230, #A31C44);
+  --accent-pressed:     light-dark(#5C0E28, #8A1538);
+  --accent-muted:       light-dark(
+                          color-mix(in srgb, #8A1538 12%, #FAF7F8),
+                          color-mix(in srgb, #8A1538 22%, #262626)
+                        );
+  --accent-warm:        #8A1538;
+  --accent-warm-hover:  light-dark(#731230, #A31C44);
+
+  /* Semantic */
+  --success:            light-dark(#056B30, #4ade80);
+  --warning:            light-dark(#754800, #facc15);
+  --danger:             light-dark(#B01818, #FFAAAA);
+  --text-on-danger:     light-dark(#ffffff, #450909);
+  --info:               light-dark(#1E40AF, #9CCAFF);
+
+  /* Dashboard attendance segments: readable against both chart surfaces. */
+  --chart-present:      light-dark(#166534, #4ade80);
+  --chart-absent:       light-dark(#991b1b, #FFAAAA);
+  --chart-late:         light-dark(#92400e, #facc15);
+  --chart-leave:        light-dark(#1e40af, #9CCAFF);
+  --chart-incomplete:   light-dark(#9a3412, #fb923c);
+  --chart-missing:      light-dark(#6b7280, #C3C1BA);
+
+  /* Layout */
+  --sidebar-w:          268px;
+  --sidebar-collapsed:  64px;
+  --header-h:           52px;
+  --content-max:        1200px;
+  --shell-gap:          12px;
+
+  /* Spacing — 8px grid */
+  --space-0:            0;
+  --space-1:            4px;
+  --space-2:            8px;
+  --space-3:            16px;
+  --space-4:            24px;
+  --space-5:            32px;
+  --space-6:            40px;
+  --space-7:            48px;
+  --space-8:            56px;
+  --space-9:            64px;
+
+  /* Type scale */
+  --font-sans:          "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-hero:          48px;
+  --text-hero-lh:       48px;
+  --text-h1:            36px;
+  --text-h1-lh:         40px;
+  --text-h1-sm:         24px;
+  --text-h1-sm-lh:      32px;
+  --text-h2:            18px;
+  --text-h2-lh:         28px;
+  --text-body:          16px;
+  --text-body-lh:       24px;
+  --text-body-sm:       14px;
+  --text-body-sm-lh:    20px;
+  --text-micro:         12px;
+  --text-micro-lh:      16px;
+  --tracking-tight:     -0.02em;
+  --tracking-normal:    -0.011em;
+
+  /* Controls */
+  --control-h:          36px;
+  --control-px:         var(--space-3);
+  --control-font:       14px;
+  --control-radius:     var(--r-md);
+
+  /* Radii */
+  --r-sm:               8px;
+  --r-md:               10px;
+  --r-lg:               14px;
+  --r-card:             16px;
+  --r-shell:            20px;
+  --r-pill:             9999px;
+
+  /* Motion */
+  --ease:               cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:           cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring:        cubic-bezier(0.34, 1.2, 0.64, 1);
+  --t-instant:          80ms;
+  --t-micro:            120ms;
+  --t-fast:             150ms;
+  --t-base:             200ms;
+  --t-slow:             280ms;
+  --t-layout:           320ms;
+  --motion-fast:        transform var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
+  --motion-base:        transform var(--t-base) var(--ease), opacity var(--t-base) var(--ease);
+  --motion-micro:       transform var(--t-micro) var(--ease), opacity var(--t-micro) var(--ease);
+  --motion-spring:      transform var(--t-slow) var(--ease-spring), opacity var(--t-slow) var(--ease-spring);
+  --motion-color:       color var(--t-micro) var(--ease),
+                        background-color var(--t-micro) var(--ease),
+                        border-color var(--t-micro) var(--ease),
+                        box-shadow var(--t-micro) var(--ease),
+                        opacity var(--t-micro) var(--ease);
+  --motion-interactive: var(--motion-color);
+  --motion-layout:      width var(--t-layout) var(--ease),
+                        max-width var(--t-layout) var(--ease),
+                        flex-basis var(--t-layout) var(--ease),
+                        padding var(--t-base) var(--ease),
+                        gap var(--t-base) var(--ease),
+                        max-height var(--t-layout) var(--ease);
+  --motion-sidebar:     opacity var(--sidebar-label-t) var(--sidebar-ease),
+                        transform var(--sidebar-label-t) var(--sidebar-ease);
+  --sidebar-t:          300ms;
+  --sidebar-ease:       cubic-bezier(0.22, 1, 0.36, 1);
+  --sidebar-label-t:    220ms;
+  --sidebar-label-delay: 90ms;
+  --sidebar-drawer-t:   320ms;
+
+  /* Shadows */
+  --shadow-card:        light-dark(0 1px 2px rgb(28 25 23 / 0.04), none);
+  --shadow-popover:     light-dark(
+                          0 8px 24px rgb(28 25 23 / 0.1),
+                          0 12px 28px rgb(0 0 0 / 0.45)
+                        );
+  --shadow-popover-lg:  0 10px 15px -3px rgb(0 0 0 / 0.1),
+                        0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-ring-soft:   0 0 0 1.8px rgb(0 0 0 / 0.08);
+  --shadow-focus:       0 0 0 2px var(--bg), 0 0 0 4px var(--ring);
+
+  /* Modal / overlay backdrops — soft dim; blur does the heavy lifting */
+  --modal-backdrop-bg:   rgb(0 0 0 / 0.32);
+  --modal-backdrop-blur: 10px;
+  --modal-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(1.2);
+  --modal-backdrop-t:    280ms;
+  --modal-backdrop-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }

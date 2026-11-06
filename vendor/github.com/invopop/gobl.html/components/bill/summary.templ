@@ -1,0 +1,240 @@
+package bill
+
+import (
+	"context"
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl"
+	"github.com/invopop/gobl.html/components/regimes/it"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl/bill"
+	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/tax"
+	"strings"
+)
+
+templ summary(env *gobl.Envelope, inv *bill.Invoice) {
+	<section class="summary">
+		@t.Scope(".summary") {
+			<h2 class="title">
+				@t.T(".title")
+			</h2>
+			<ul>
+				@it.RefSummaryRow(env)
+				<li class="issue-date">
+					<span class="label">
+						@t.T(".issue_date")
+					</span>
+					<span class="value date">
+						@issueDateTime(inv.IssueDate, inv.IssueTime)
+					</span>
+				</li>
+				<li class="currency">
+					<span class="label">
+						@t.T(".currency")
+					</span>
+					<span class="value">
+						{ currencyName(ctx, inv.Currency) }
+					</span>
+				</li>
+				if inv.Tax != nil && inv.Tax.Point != "" {
+					<li class="tax-point">
+						<span class="label">
+							@t.T(".taxable_event")
+						</span>
+						<span class="value">
+							@t.T(".tax_points." + inv.Tax.Point.String())
+						</span>
+					</li>
+				}
+				if inv.ValueDate != nil {
+					<li class="value-date">
+						<span class="label">
+							@t.T(".taxable_event_date")
+						</span>
+						<span class="value date">
+							@t.L(inv.ValueDate)
+						</span>
+					</li>
+				}
+				if inv.OperationDate != nil {
+					<li class="op-date">
+						<span class="label">
+							@t.T(".operation_date")
+						</span>
+						<span class="value date">
+							@t.L(inv.OperationDate)
+						</span>
+					</li>
+				}
+				if len(inv.Preceding) > 0 {
+					@summaryPrecedingRows(inv)
+				}
+				if inv.Ordering != nil {
+					@summaryOrderingRows(inv.Ordering)
+				}
+				if inv.Tax != nil {
+					@summaryTaxExtRows(inv.Tax.Ext)
+				}
+			</ul>
+		}
+	</section>
+}
+
+templ summaryPrecedingRows(obj any) {
+	{{ doc := internal.DocumentFor(obj) }}
+	<li class="preceding">
+		<span class="label">
+			if internal.Options(ctx).AdjustmentMode {
+				if doc.GetType().In(bill.InvoiceTypeCorrective) {
+					@t.T(".replaced_documents")
+				} else {
+					@t.T(".corrected_documents")
+				}
+			} else {
+				@t.T(".preceding_document")
+			}
+		</span>
+		for _, pre := range doc.GetPreceding() {
+			<span class="value">
+				@joinCode(doc, pre.Series, pre.Code)
+				if pre.IssueDate != nil {
+					{ " · " }
+					<span class="date">
+						@t.L(pre.IssueDate)
+					</span>
+				}
+				if pre.Reason != "" {
+					{ " · " }
+					{ pre.Reason }
+				}
+			</span>
+		}
+	</li>
+}
+
+templ summaryOrderingRows(ord *bill.Ordering) {
+	if ord.Code != "" {
+		<li class="ordering-code">
+			<span class="label">
+				@t.T(".order")
+			</span>
+			<span class="value">
+				{ ord.Code.String() }
+			</span>
+		</li>
+	}
+	if ord.Period != nil {
+		@summaryOrderPeriodRows(ord.Period)
+	}
+	for _, ident := range ord.Identities {
+		if ident.Label != "" {
+			<li class="ordering-ident">
+				<span class="label">
+					{ ident.Label }
+				</span>
+				<span class="value">
+					{ ident.Code.String() }
+				</span>
+			</li>
+		}
+	}
+	if len(ord.Purchases) > 0 {
+		<li class="ordering-purchases">
+			<span class="label">
+				@t.T("billing.order.title.purchase")
+			</span>
+			for _, purchase := range ord.Purchases {
+				if purchase != nil {
+					<span class="value">
+						{ purchase.Series.Join(purchase.Code).String() }
+						if purchase.IssueDate != nil {
+							{ " · " }
+							<span class="date">
+								@t.L(purchase.IssueDate)
+							</span>
+						}
+					</span>
+				}
+			}
+		</li>
+	}
+	if len(ord.Contracts) > 0 {
+		<li class="ordering-contracts">
+			<span class="label">
+				@t.T(".contract")
+			</span>
+			for _, contract := range ord.Contracts {
+				if contract != nil {
+					<span class="value">
+						{ contract.Series.Join(contract.Code).String() }
+						if contract.IssueDate != nil {
+							{ " · " }
+							<span class="date">
+								@t.L(contract.IssueDate)
+							</span>
+						}
+					</span>
+				}
+			}
+		</li>
+	}
+}
+
+templ summaryTaxExtRows(ext tax.Extensions) {
+	for _, k := range ext.Keys() {
+		if label := mapTaxExtension(ctx, k); label != "" {
+			<li class="tax-ext">
+				<span class="label">
+					{ label }
+				</span>
+				<span class="value">
+					{ ext.Get(k).String() }
+				</span>
+			</li>
+		}
+	}
+}
+
+templ summaryOrderPeriodRows(p *cal.Period) {
+	<li class="ordering-period">
+		<span class="label">
+			if p.Label != "" {
+				@t.T(".order_period_label", i18n.M{"label": p.Label})
+			} else {
+				@t.T(".order_period")
+			}
+		</span>
+		<span class="value">
+			@t.T(".order_period_range", i18n.M{"start": t.Localize(ctx, p.Start), "end": t.Localize(ctx, p.End)})
+		</span>
+	</li>
+}
+
+func currencyName(ctx context.Context, cur currency.Code) string {
+	def := cur.Def()
+	if def == nil {
+		return string(cur)
+	}
+	// does a translation for the currency name exist?
+	name := i18n.T(ctx, "currencies."+string(cur), i18n.Default(def.Name))
+	return i18n.T(ctx, ".currency_value", i18n.M{"desc": name, "code": cur})
+}
+
+func issueDateTime(date cal.Date, time *cal.Time) templ.Component {
+	if time == nil {
+		return t.L(date)
+	}
+	return t.L(date.WithTime(*time))
+}
+
+func mapTaxExtension(ctx context.Context, k cbc.Key) string {
+	// find the key translation
+	label := i18n.T(ctx, ".ext_map."+k.String())
+	if strings.HasPrefix(label, "!") { // if match found
+		return ""
+	}
+	return label
+}

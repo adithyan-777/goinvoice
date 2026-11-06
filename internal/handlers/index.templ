@@ -1,0 +1,211 @@
+package handlers
+
+import (
+	"github.com/neo/goinvoice/internal/invoicer"
+)
+
+// dsModalOpen toggles the pattika admin-modal via Datastar signals.
+const dsModalOpen = "{'is-open': $modalOpen}"
+
+templ Layout(title string, nav string) {
+	<!doctype html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title }</title>
+			<script>
+				(function () {
+					const modeKey = "logkshana-theme-mode";
+					const prefsKey = "ittisal-ui-prefs";
+					const defaults = { mode: "system", layout: "compact", scale: "md", sidebarVariant: "inset", sidebarMode: "default" };
+					const prefs = { ...defaults };
+					try {
+						const mode = window.localStorage.getItem(modeKey);
+						if (mode === "system" || mode === "light" || mode === "dark") prefs.mode = mode;
+						const raw = window.localStorage.getItem(prefsKey);
+						if (raw) Object.assign(prefs, JSON.parse(raw));
+					} catch (_) {}
+					if (!["light", "dark", "system"].includes(prefs.mode)) prefs.mode = "system";
+					const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+					const theme = prefs.mode === "dark" ? "dark" : prefs.mode === "light" ? "light" : prefersDark ? "dark" : "light";
+					const root = document.documentElement;
+					root.setAttribute("data-theme", theme);
+					root.setAttribute("data-layout", prefs.layout || defaults.layout);
+					root.setAttribute("data-scale", prefs.scale || defaults.scale);
+					root.setAttribute("data-sidebar-variant", prefs.sidebarVariant || defaults.sidebarVariant);
+					root.setAttribute("data-sidebar-mode", prefs.sidebarMode || defaults.sidebarMode);
+				})();
+			</script>
+			<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
+			<link href="https://cdn.jsdelivr.net/npm/@fontsource-variable/geist@5.2.5/index.min.css" rel="stylesheet"/>
+			<link href="https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/basic/boxicons.min.css" rel="stylesheet"/>
+			<link href="https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/filled/boxicons-filled.min.css" rel="stylesheet"/>
+			<link href="https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/brands/boxicons-brands.min.css" rel="stylesheet"/>
+			<link href="https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/animations.min.css" rel="stylesheet"/>
+			<link rel="stylesheet" href="/static/pattika/css/tokens.css?v=3"/>
+			<link rel="stylesheet" href="/static/pattika/css/base.css?v=3"/>
+			<link rel="stylesheet" href="/static/pattika/css/motion.css?v=3"/>
+			<link rel="stylesheet" href="/static/pattika/css/layout.css?v=3"/>
+			<link rel="stylesheet" href="/static/pattika/css/sidebar.css?v=3"/>
+			<link rel="stylesheet" href="/static/pattika/css/components.css?v=3"/>
+			<link rel="stylesheet" href="/static/pattika/css/utilities.css?v=3"/>
+			<link rel="stylesheet" href="/static/goinvoice.css?v=3"/>
+			<script type="module" src="/static/datastar.js?v=2"></script>
+		</head>
+		<body class="app" data-signals={ "{modalOpen: false, toast: '', nav: '" + nav + "'}" } data-on:keydown__window="if (evt.key === 'Escape') $modalOpen = false">
+			<input type="checkbox" id="sidebar-collapsed" class="sidebar-state" aria-hidden="true"/>
+			<input type="checkbox" id="sidebar-mobile" class="sidebar-state" aria-hidden="true"/>
+			<aside class="sidebar" id="sidebar" aria-label="Primary">
+				<div class="sidebar__top">
+					<a href="/" class="brand-text" title="Ittisal Invoice">
+						<i class="bx bx-receipt"></i><span>Ittisal Invoice</span>
+					</a>
+					<label for="sidebar-collapsed" class="sidebar__collapse-btn" aria-label="Collapse sidebar">
+						<i class="bx bx-sidebar admin-icon admin-icon--18"></i>
+					</label>
+					<label for="sidebar-mobile" class="sidebar__mobile-close" aria-label="Close menu">
+						<i class="bx bx-x admin-icon admin-icon--18"></i>
+					</label>
+				</div>
+				<div class="sidebar__body">
+					<nav class="quick-actions" aria-label="Primary">
+						<a href="/" class="quick-action" data-on:click__prevent={ dsNavInvoices } data-class={ dsNavActive("invoices") }>
+							<span class="quick-action__icon"><i class="bx bx-receipt admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Invoices</span>
+						</a>
+						<a href="/customers" class="quick-action" data-on:click__prevent={ dsNavCustomers } data-class={ dsNavActive("customers") }>
+							<span class="quick-action__icon"><i class="bx bx-user admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Customers</span>
+						</a>
+						<a href="/suppliers" class="quick-action" data-on:click__prevent={ dsNavSuppliers } data-class={ dsNavActive("suppliers") }>
+							<span class="quick-action__icon"><i class="bx bx-buildings admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Suppliers</span>
+						</a>
+						<a href="/products" class="quick-action" data-on:click__prevent={ dsNavProducts } data-class={ dsNavActive("products") }>
+							<span class="quick-action__icon"><i class="bx bx-package admin-icon admin-icon--20"></i></span>
+							<span class="quick-action__label">Products</span>
+						</a>
+					</nav>
+				</div>
+			</aside>
+			<div class="main" id="spa-view">
+				<header class="topbar">
+					<div class="topbar__left">
+						<label for="sidebar-mobile" class="btn-icon topbar__open-sidebar" aria-label="Open menu">
+							<i class="bx bx-menu admin-icon admin-icon--20"></i>
+						</label>
+					</div>
+					<div class="topbar__right">
+						<div class="topbar__tools" role="toolbar" aria-label="Quick actions">
+							<button type="button" class="btn-icon" aria-label="Toggle theme" title="Toggle theme" data-theme-quick>
+								<i class="bx bx-moon admin-icon admin-icon--20"></i>
+							</button>
+						</div>
+					</div>
+				</header>
+				<div class="main-scroll">
+					<div class="page-content" id="main">
+						{ children... }
+					</div>
+				</div>
+			</div>
+			<label for="sidebar-mobile" class="backdrop" aria-hidden="true"></label>
+			<div class="toasts" id="toast-container" aria-live="polite" aria-relevant="additions">
+				<div class="toast" style="display:none" data-show="$toast != ''" data-text="$toast"></div>
+			</div>
+			<div class="admin-modal" id="app-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" data-class={ dsModalOpen }>
+				<div class="admin-modal__backdrop" data-on:click="$modalOpen = false"></div>
+				<div class="admin-modal__dialog">
+					<div class="admin-modal__head">
+						<h2 class="admin-modal__title" id="modal-title">Edit</h2>
+						<button type="button" class="btn-icon" aria-label="Close" data-on:click="$modalOpen = false">
+							<i class="bx bx-x admin-icon admin-icon--20"></i>
+						</button>
+					</div>
+					<div class="admin-modal__body" id="modal-body"></div>
+				</div>
+			</div>
+			<script src="/static/pattika/js/theme.js?v=3"></script>
+		</body>
+	</html>
+}
+
+templ InvoicesSection(summaries []*invoicer.Summary, stats invoicer.InvoiceStats) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">Invoices</h1>
+			<p class="page-head__subtitle">Billing documents with calculated totals</p>
+		</div>
+	</div>
+	if len(summaries) == 0 {
+		<div class="empty-stage">
+			<div class="empty-stage__icon"><i class="bx bx-receipt"></i></div>
+			<div class="empty-stage__title">No invoices yet</div>
+			<div class="empty-stage__text">Create one with:</div>
+			<pre class="code">
+				{ `curl -s -X POST http://localhost:8080/invoices \
+  -H 'Content-Type: application/json' \
+  -d @examples/sample-invoice.json > /dev/null` }
+			</pre>
+		</div>
+	} else {
+		<div class="kpi-grid">
+			<div class="card kpi">
+				<div class="kpi__label">Invoices</div>
+				<div class="kpi__value">{ stats.Count }</div>
+				<div class="kpi__sub">stored envelopes</div>
+			</div>
+			<div class="card kpi">
+				<div class="kpi__label">Payable</div>
+				<div class="kpi__value">{ stats.Payable }<small>{ stats.Currency }</small></div>
+				<div class="kpi__sub">total including tax</div>
+			</div>
+			<div class="card kpi">
+				<div class="kpi__label">Tax</div>
+				<div class="kpi__value">{ stats.Tax }<small>{ stats.Currency }</small></div>
+				<div class="kpi__sub">collected across invoices</div>
+			</div>
+		</div>
+		<div class="card card--table">
+			<div class="card__body">
+				<div class="data-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Code</th>
+								<th>Date</th>
+								<th>Customer</th>
+								<th class="num">Tax</th>
+								<th class="num">Payable</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, s := range summaries {
+								<tr>
+									<td><span class="ref-badge">{ s.Series }</span>{ s.Code }</td>
+									<td>{ s.IssueDate }</td>
+									<td>{ s.Customer }</td>
+									<td class="num">{ s.Tax }</td>
+									<td class="num money">{ s.Payable }</td>
+									<td class="table-actions">
+										<a class="btn-icon" title="View" href={ "/invoices/" + s.ID + "/html" }><i class="bx bx-file admin-icon admin-icon--18"></i></a>
+										<a class="btn-icon" title="JSON" href={ "/invoices/" + s.ID + "/envelope.json" }><i class="bx bx-code-alt admin-icon admin-icon--18"></i></a>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+		<p class="text-muted">Amounts as stored in the envelope</p>
+	}
+}
+
+templ IndexPage(summaries []*invoicer.Summary, stats invoicer.InvoiceStats) {
+	@Layout("Ittisal Invoice", "invoices") {
+		@InvoicesSection(summaries, stats)
+	}
+}

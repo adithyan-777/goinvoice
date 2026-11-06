@@ -1,0 +1,621 @@
+header {
+    width: 100%;
+    display: flex;
+    flex-flow: row wrap;
+    border-bottom: 0.5px solid #e5e7eb;
+}
+.invoice.din5008 section.title {
+    min-height: 30mm;
+    max-height: 30mm;
+}
+.invoice.din5008 section.summary {
+    padding-left: 6mm;
+}
+.invoice.din5008 > header {
+    flex-flow: row wrap;
+}
+.invoice.din5008 > header > div {
+    flex-basis: 50%;
+}
+
+.invoice.din5008 > header section.customer {
+    min-height: 45mm;
+    padding-top: 2mm !important;
+    padding-left: 0 !important;
+    max-width: 85mm;
+    border-top: 0 !important;
+}
+.invoice.din5008 > header section.customer > .party-border {
+    padding-left: 10mm;
+    border-left: 0.5px solid #e5e7eb;
+}
+.invoice.din5008 > header section.supplier {
+    padding: 6mm;
+    border-top: 0.5px solid #e5e7eb;
+}
+.invoice.din5008 > header > div:first-child {
+    box-sizing: border-box;
+    border-right: 0.5px solid #e5e7eb;
+}
+.invoice code {
+    background: #f3f4f6;
+    border-radius: 1mm;
+    padding: 0.5mm 1mm;
+    white-space: nowrap;
+}
+header.regular div.details {
+    flex: 1;
+    border-right: 0.5px solid #e5e7eb;
+}
+html[dir="rtl"] header.regular div.details {
+    border-right: none;
+    border-left: 0.5px solid #e5e7eb;
+}
+header.regular > div.contacts {
+    flex: 1;
+}
+header.regular > div.contacts > section:first-of-type {
+    padding: 6mm;
+    padding-top: 0mm;
+}
+header.regular > div.contacts > section:not(:first-of-type) {
+    padding: 6mm;
+    border-top: 0.5px solid #e5e7eb;
+}
+header.with-qr > section.qr {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-basis: 50%;
+    padding-bottom: 24px;
+}
+header.with-qr > div.details {
+    flex-basis: 50%;
+    box-sizing: border-box;
+    border-right: 0.5px solid #e5e7eb;
+}
+header.with-qr div.contacts {
+    flex-basis: 100%;
+    display: flex;
+    border-top: 0.5px solid #e5e7eb;
+    gap: 16pt;
+}
+header.with-qr div.contacts section {
+    padding-top: 6mm;
+    padding-bottom: 6mm;
+}
+
+section {
+    padding: 0mm;
+    /* width: 100%; */
+    flex: 100%;
+}
+section.title {
+    padding-top: 0mm;
+    padding-bottom: 6mm;
+}
+section.title .hero {
+    margin-bottom: 6mm;
+    display: flex;
+}
+section.title .alias {
+    font-size: 16pt;
+    font-weight: bold;
+    flex-grow: 1;
+    line-height: 1.2;
+}
+section.title .hero img {
+    max-width: 100%;
+    object-fit: contain;
+}
+section.title .arca-doc-type {
+    border: 1px solid #e5e7eb;
+    border-radius: 1mm;
+    text-transform: uppercase;
+    width: 1.2cm;
+    height: 1.2cm;
+    font-weight: 500;
+    margin: 0 6mm 0 3mm;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+section.title .arca-doc-type .letter {
+    font-size: 18pt;
+    font-weight: 600;
+    line-height: 1;
+}
+section.title .arca-doc-type .code {
+    font-size: 7pt;
+    color: #4b5563;
+    margin-top: 0.5mm;
+    white-space: nowrap;
+    line-height: 1;
+}
+section.title span.paid,
+section.title span.void,
+section.title span.self-billed,
+section.title span.label {
+    font-size: 9pt;
+    font-weight: 400;
+    vertical-align: text-bottom;
+    padding: 0.5mm 1.5mm;
+    border-radius: 1mm;
+    margin-left: 2mm;
+    text-wrap: nowrap;
+    background-color: #5151511a;
+    border: 1px solid #51515133;
+    color: #494949;
+}
+section.title span.paid {
+    background-color: #0290621a;
+    border: 1px solid #02906233;
+    color: #008852;
+}
+section.title span.void {
+    background-color: #D32F2F1A;
+    border: 1px solid #D32F2F33;
+    color: #A32020;
+}
+section.title h2.code,
+section.title .title-group-inline h1 {
+    font-size: 12pt;
+    font-weight: 600;
+}
+section.title .title-group-inline h1,
+section.title .title-group-inline h2 {
+    display: inline-block;
+}
+section.title h2.code {
+    word-break: break-all;
+}
+section.summary {
+    padding-right: 6mm;
+    padding-top: 0mm;
+    padding-bottom: 0mm;
+}
+html[dir="rtl"] section.summary {
+    padding-right: 0mm;
+    padding-left: 6mm;
+}
+section.summary h2.title {
+    display: none;
+}
+section.summary ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-flow: row wrap;
+}
+section.summary li {
+    margin-bottom: 6mm;
+    flex: 50%;
+}
+section.summary li:nth-child(even) {
+    padding-left: 3mm;
+    box-sizing: border-box;
+}
+section.summary span.label {
+    display: block;
+    font-weight: 500;
+    color: #4b5563;
+}
+section.summary span.value {
+    display: block;
+}
+section.summary span.date {
+    white-space: nowrap;
+}
+section.lines {
+    order: 5;
+    padding-top: 6mm;
+    padding-bottom: 0mm;
+}
+section.lines h2 {
+    display: none;
+}
+section.lines table,
+section.methods table {
+    width: 100%;
+}
+section.lines th,
+section.lines td,
+section.methods th,
+section.methods td {
+    text-align: left;
+    border-bottom: 0.5px solid #e5e7eb;
+    padding: 1.5mm 2mm;
+    margin: 0px;
+    vertical-align: top;
+}
+section.methods td,
+section.methods th {
+    line-height: 1.4;
+    padding: 2mm;
+}
+section.lines th,
+section.methods th {
+    font-weight: 600;
+    background-color: #f3f4f6;
+}
+section.lines .i,
+section.lines .ref {
+    width: fit-content;
+}
+section.lines .price,
+section.lines .percent,
+section.lines .quantity,
+section.lines .tax,
+section.lines .discount,
+section.lines .charge,
+section.lines .total {
+    text-align: right;
+    width: fit-content;
+    white-space: nowrap;
+}
+section.lines .description {
+    white-space: wrap;
+}
+section.lines .label {
+    font-weight: 500;
+}
+section.lines .subline {
+    display: block;
+    font-size: 0.85em;
+}
+section.lines .subline .label {
+    font-weight: 400;
+}
+section.lines .subline code {
+    padding: 0;
+    background-color: transparent;
+}
+section.lines .subline .label:after {
+    content: ": ";
+}
+section.lines .seller {
+    display: block;
+    padding: 1.5mm 0;
+}
+section.lines .discount-content {
+    display: block;
+}
+section.lines .charge-content {
+    display: block;
+}
+section.lines .charge-content .code:after {
+    content: ": ";
+}
+section.lines .alt-price {
+    display: block;
+    font-size: 0.85em;
+    font-weight: 450;
+    color: #4b5563;
+}
+section.lines tr.breakdown td {
+    color: #4b5563;
+    font-weight: 300;
+}
+section.lines tr.breakdown td.ref {
+    border-bottom-width: 0;
+}
+section.lines tr.breakdown:has(+ :not(.breakdown)) td.ref {
+    border-bottom-width: 0.5px;
+}
+div.totals {
+    order: 8;
+    display: flex;
+    flex-wrap: row;
+    width: 100%;
+    padding-top: 6mm;
+    border-bottom: 0.5px solid #e5e7eb;
+    padding-bottom: 4mm;
+}
+div.totals td,
+div.totals th {
+    padding: 1.5mm 2mm;
+}
+section.totals {
+    order: 2;
+    flex: 1;
+}
+section.totals h2 {
+    display: none;
+}
+section.totals table {
+    padding-right: 1cm;
+    padding-left: 1cm;
+    width: auto;
+    margin-right: 0;
+    margin-left: auto;
+}
+section.totals th {
+    text-align: right;
+    border-top: 0.5px solid #e5e7eb;
+    font-weight: normal;
+}
+section.totals td {
+    text-align: right;
+    border-top: 0.5px solid #e5e7eb;
+}
+section.totals td:last-child {
+    white-space: nowrap;
+    width: 1%;
+}
+section.totals tr:first-child th,
+section.totals tr:first-child td {
+    border-top: 0;
+}
+section.totals tr.strong th,
+section.totals tr.strong td {
+    font-weight: 600;
+}
+section.totals tr.exchange-rate th,
+section.totals tr.exchange-rate td {
+    color: #4b5563;
+}
+article.payment section.totals tr.strong th,
+article.payment section.totals tr.strong td {
+    font-weight: 400;
+}
+section.taxes {
+    order: 1;
+    flex: 1;
+}
+section.taxes h2 {
+    display: none;
+}
+section.taxes table {
+    padding-right: 1cm;
+    padding-left: 1cm;
+    margin-left: 0;
+    width: 90%;
+}
+section.taxes th,
+section.taxes td {
+    text-align: right;
+    padding: 1.5mm 2mm;
+    vertical-align: top;
+}
+section.taxes th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+}
+section.taxes td {
+    border-top: 0.5px solid #e5e7eb;
+}
+section.taxes tr:first-child td {
+    border-top: 0;
+}
+section.taxes th.category,
+section.taxes td.category {
+    text-align: left;
+}
+section.arca-transparency {
+    padding-top: 6mm;
+    break-inside: avoid;
+}
+section.payment {
+    border-bottom: 0.5px solid #e5e7eb;
+    padding: 6mm 0mm;
+    order: 10;
+    display: flex;
+    flex-flow: row;
+    break-inside: avoid;
+}
+section.payment h2.title {
+    display: none;
+}
+section.payment ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+section.payment ul.terms,
+section.payment ul.instructions {
+    margin-right: 6mm;
+}
+section.payment ul.online-qrs {
+    margin-left: 4mm;
+    text-align: center;
+}
+section.payment ul.online-qrs span.value {
+    margin-top: 1mm;
+}
+section.payment ul.online-qrs span.value + span.value {
+    margin-top: 4mm;
+}
+section.payment ul.online-qrs a.online-qr {
+    display: block;
+    text-decoration: none;
+}
+section.payment ul.online-qrs a.online-qr img {
+    display: block;
+    margin: 0 auto;
+}
+section.payment ul.online-qrs span.button {
+    display: inline-block;
+    margin-top: 2mm;
+    padding: 0.5mm 2mm;
+    border-radius: 1mm;
+    background-color: #f3f4f6;
+    border: 0.5px solid #e5e7eb;
+    color: #030712;
+    font-size: 7pt;
+    line-height: 1.5;
+    max-width: 30mm;
+    overflow-wrap: anywhere;
+}
+section.payment li {
+    margin-bottom: 3mm;
+}
+section.payment li:last-child {
+    margin-bottom: 0;
+}
+section.payment span.label {
+    display: block;
+    font-weight: 500;
+}
+section.payment span.value {
+    display: block;
+}
+section.payment table td {
+    padding-right: 3mm;
+}
+section.payment .due-dates span.percent:before {
+    content: "(";
+}
+section.payment .due-dates span.percent:after {
+    content: ")";
+}
+section.payment .due-dates td.date,
+section.payment .due-dates td.amount {
+    width: fit-content;
+    white-space: nowrap;
+}
+section.payment {
+    border-bottom: 0.5px solid #e5e7eb;
+    padding: 6mm 0mm;
+    order: 10;
+    display: flex;
+    flex-flow: row;
+    break-inside: avoid;
+}
+section.payment h2.title {
+    display: none;
+}
+section.payment ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+section.methods {
+    display: block;
+}
+section.methods th.num,
+section.methods td.date,
+section.methods td.amount {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
+}
+
+section.methods .card-detail,
+section.methods .description,
+section.methods .ref,
+section.methods .credit-transfer,
+section.methods .direct-debit-details,
+section.methods .online {
+    color: #4b5563;
+    font-size: smaller;
+}
+section.methods tfoot th,
+section.methods tfoot td {
+    font-weight: 600;
+    border-top: 0.5px solid #e5e7eb;
+    padding-bottom: 6mm;
+    white-space: nowrap;
+}
+section.methods tfoot th {
+    background-color: white;
+    text-align: right;
+}
+section.tracking {
+    border-bottom: 0.5px solid #e5e7eb;
+    padding: 6mm 0mm;
+    order: 10;
+    display: flex;
+    flex-flow: row;
+    break-inside: avoid;
+}
+section.tracking h2.title {
+    display: none;
+}
+section.tracking ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+section.tracking li {
+    margin-bottom: 3mm;
+}
+
+section.tracking li:last-child {
+    margin-bottom: 0;
+}
+
+section.tracking span.label {
+    display: block;
+    font-weight: 500;
+}
+
+section.tracking span.value {
+    display: block;
+}
+section.notes {
+    padding-top: 6mm;
+    padding-bottom: 6mm;
+    border-bottom: 0.5px solid #e5e7eb;
+    break-inside: avoid;
+}
+section.notes .note {
+    margin-bottom: 0mm;
+}
+.extensions section {
+    break-inside: avoid;
+    padding-top: 6mm;
+    padding-bottom: 6mm;
+    border-bottom: 0.5px solid #e5e7eb;
+}
+.extensions:empty {
+    display: none;
+}
+.org-party .name {
+    font-weight: 600;
+    font-size: 12pt;
+    line-height: 16pt;
+    padding-bottom: 2pt;
+}
+.arca-vat-legend {
+    text-transform: uppercase;
+}
+.mp-header {
+    float: top;
+    display: none;
+    margin: 0;
+    margin-bottom: 4mm;
+}
+.mp-footer {
+    float: bottom;
+    display: none;
+}
+.mp-header div,
+.mp-footer div,
+.mp-header section,
+.mp-footer section {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.mp-header section.title {
+    order: 1;
+    flex: 1;
+}
+.mp-header .hero {
+    display: none;
+}
+
+/* used to ensure certain elements don't exceed the page height which is problematic in multipage.js calculations */
+.limited-height {
+    max-height: 80vh;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* used to ensure certain elements don't break to the next line */
+.nowrap {
+    white-space: nowrap;
+}

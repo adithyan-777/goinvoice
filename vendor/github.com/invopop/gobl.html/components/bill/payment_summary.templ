@@ -1,0 +1,48 @@
+package bill
+
+import (
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl/bill"
+)
+
+templ paymentSummary(pmt *bill.Payment) {
+	<section class="summary">
+		@t.Scope(".summary") {
+			<h2 class="title">
+				@t.T(".title")
+			</h2>
+			<ul>
+				<li class="issue-date">
+					<span class="label">
+						@t.T(".issue_date")
+					</span>
+					<span class="value">
+						@issueDateTime(pmt.IssueDate, pmt.IssueTime)
+					</span>
+				</li>
+				<li class="currency">
+					<span class="label">
+						@t.T(".currency")
+					</span>
+					<span class="value">
+						{ currencyName(ctx, pmt.Currency) }
+					</span>
+				</li>
+				if pmt.ValueDate != nil {
+					<li class="value-date">
+						<span class="label">
+							@t.T(".value_date")
+						</span>
+						<span class="value">
+							@t.L(pmt.ValueDate)
+						</span>
+					</li>
+				}
+				if pmt.Ordering != nil {
+					@summaryOrderingRows(pmt.Ordering)
+				}
+				@summaryTaxExtRows(pmt.Ext)
+			</ul>
+		}
+	</section>
+}

@@ -1,0 +1,258 @@
+de:
+  page: "Seite %{page} von %{count}"
+
+  billing:
+    invoice: &invoice
+      title:
+        standard: "Rechnung"
+        standard-simplified: "Kleinbetragsrechnung"
+        proforma: "Proforma-Rechnung"
+        corrective: "Korrekturrechnung"
+        credit-note: "Gutschrift"
+        debit-note: "Belastungsanzeige"
+        other: "Beleg"
+        paid: "Bezahlt"
+        void: "Ungültig"
+        self-billed: "Gutschriftverfahren"
+        untdid:
+          "325": "Proforma-Rechnung"
+          "380": "Rechnung"
+          "381": "Gutschrift"
+          "383": "Lastschrift"
+          "384": "Korrekturrechnung"
+          "326": "Teilrechnung"
+          "389": "Selbst ausgestellte Rechnung"
+          "261": "Selbst ausgestellte Gutschrift"
+          "386": "Anzahlungsrechnung"
+          "393": "Abgetretene Rechnung (Factoring)"
+          "396": "Abgetretene Gutschrift (Factoring)"
+
+      summary: &summary
+        title: "Zusammenfassung"
+        issue_date: "Ausstellungsdatum"
+        value_date: "Wertstellungsdatum"
+        taxable_event: "Steuerbarer Vorgang"
+        taxable_event_date: "Datum des steuerbaren Vorgangs"
+        tax_points:
+          issue: "Ausstellungsdatum"
+          delivery: "Lieferdatum"
+          payment: "Zahlungsdatum"
+        operation_date: "Leistungsdatum"
+        currency: "Währung"
+        currency_value: "%{desc} (%{code})"
+        preceding_document: "Vorheriges Dokument"
+        replaced_documents: "Ersetzte Dokumente"
+        corrected_documents: "Berichtigte Dokumente"
+        order: "Bestellung"
+        order_period: "Zeitraum"
+        order_period_label: "%{label}"
+        order_period_range: "%{start} bis %{end}"
+        contract: "Vertrag"
+
+      supplier:
+        title: "Lieferant"
+
+      customer:
+        title: "Kunde"
+
+      receiver:
+        title: "Lieferadresse"
+        date: "Lieferdatum: %{date}"
+        period: "Lieferdatum: %{start} bis %{end}"
+
+      lines: &lines
+        title: "Positionen"
+        i: "#"
+        ref: "Ref."
+        description: "Beschreibung"
+        quantity: "Menge"
+        unit: "Einheit"
+        price: "Einzelpreis"
+        discount: "Rabatt"
+        charges: "Gebühren"
+        total: "Gesamt"
+        no_percent: "—"
+        exemption: "Befreiung"
+        on_behalf_of: "Im Auftrag von"
+        period: "Zeitraum"
+        period_range: "%{start} bis %{end}"
+
+      totals: &totals
+        sum: "Summe"
+        discount: "Rabatt"
+        charge: "Gebühr"
+        title: "Summen"
+        prices_include: "Inklusive %{tax}"
+        total: "Gesamt"
+        taxes: "Steuern"
+        total_with_tax: "Gesamt inkl. Steuern"
+        retained_tax: "Einbehaltene Steuer"
+        rounding: "Rundung"
+        total_to_pay: "Gesamt zu zahlen"
+        advance: "Vorauszahlung"
+        due_sum: "Gesamtbetrag fällig"
+        exchange_rate: "Umtausch in %{to} (%{amount})"
+        carried_fwd: "Übertrag"
+        brought_fwd: "Vortrag"
+
+      taxes:
+        title: "Steuern"
+        category: "Steuer"
+        base: "Basis"
+        rate: "Satz"
+        amount: "Betrag"
+        exemption: "Befreiung"
+        no_percent: "—"
+
+      payment: &payment
+        title: "Zahlung"
+        instructions: &payment_instructions
+          method: "Zahlungsmethode"
+          ref: "Referenz"
+          ref_line: "Referenz: %{ref}"
+          amount: "Betrag"
+          description: "Beschreibung"
+          bank_data: "Banküberweisungsanweisungen"
+          card: "Kartenzahlung"
+          card_detail: "Zahlung mit Karte mit den letzten 4 Ziffern %{last4} von %{holder}"
+          direct_debit: "Lastschrift"
+          mandate_ref: "Mandat: %{ref}"
+          creditor: "Gläubiger-ID: %{creditor}"
+          observations: "Zahlungshinweise"
+          bank_name: "Bank: %{name}"
+          iban: "IBAN: %{iban}"
+          account_number: "Kontonummer: %{num}"
+          clearing: "Bankleitzahl: %{code}"
+          bic: "BIC: %{bic}"
+          online: "Zahlungslink"
+          methods:
+            card: "Bankkarte"
+            card+credit: "Kreditkarte"
+            card+debit: "Debitkarte"
+            credit-transfer: "Banküberweisung"
+            debit-transfer: "Debitüberweisung"
+            cash: "Bargeld"
+            direct-debit: "Lastschrift"
+            online: "Online"
+            cheque: "Scheck"
+        terms:
+          key: "Zahlungsbedingungen"
+          notes: "Zahlungsbedingungen Hinweise"
+          due_dates: 
+            one: "Fälligkeitsdatum"
+            other: "Fälligkeitsdaten"
+          keys:
+            na: "Nicht angegeben"
+            end_of_month: "Ende des Monats"
+            due_date: "Am Fälligkeitstag"
+            deferred: "Nach Fälligkeitstag"
+            proximo: "Nächster Monat"
+            instant: "Bei Rechnungszustellung"
+            elective: "Vom Kunden gewählt"
+            pending: "Vom Lieferanten zu bestimmen"
+            advanced: "Bezahlt"
+            delivery: "Bei Lieferung"
+
+      notes:
+        title: "Hinweise"
+
+    payment:
+      <<: *invoice
+      title:
+        request: "Zahlungsaufforderung"
+        advice: "Zahlungsavis"
+        receipt: "Zahlungseingang"
+        paid: "Bezahlt"
+        void: "Ungültig"
+
+      lines:
+        <<: *lines
+        document: "Dokument"
+
+      methods:
+        title: "Zahlungsdetails"
+        date: "Datum"
+        amount: "Betrag"
+        total: "Gezahlt"
+        instructions: *payment_instructions
+
+    delivery:
+      <<: *invoice
+      title:
+        advice: "Lieferavis"
+        note: "Lieferschein"
+        waybill: "Frachtbrief"
+        receipt: "Lieferquittung"
+
+      summary:
+        <<: *summary
+        despatch_date: "Versanddatum"
+        receive_date: "Empfangsdatum"
+        preceding_document: "Vorheriges Dokument"
+
+      despatcher:
+        title: "Absender"
+
+      receiver:
+        title: "Empfänger"
+
+      courier:
+        title: "Kurier"
+
+      tracking:
+        title: "Sendungsverfolgung"
+        code: "Tracking-Code"
+        website: "Tracking-Link"
+
+    order:
+      <<: *invoice
+      title:
+        purchase: "Bestellung"
+        sale: "Verkaufsauftrag"
+        quote: "Angebot"
+
+      summary:
+        <<: *summary
+        preceding_document: "Vorheriges Dokument"
+        contract: "Vertrag"
+        period: "Zeitraum"
+
+      buyer:
+        title: "Käufer"
+
+      seller:
+        title: "Verkäufer"
+
+  org:
+    party:
+      tax_id: "%{label}: (%{country}) %{code}"
+      tax_id_no_country: "%{label}: %{code}"
+      tel: "Tel: %{num}"
+      tel_label: "Tel: %{num} (%{label})"
+      email:
+        one: "E-Mail: %{addr}"
+        other: "E-Mails: %{addr}"
+      email_label: "%{addr} (%{label})"
+      identity: "%{label}: %{code}"
+      identity_code: "Identitätscode"
+      identity_labels:
+        passport: "Reisepass"
+      po_box: "Postfach %{po_box}"
+      labels:
+        default: "Umsatzsteuer"
+      ext: "%{label}: %{value}"
+      ext_map:
+        # Stellen Sie sicher, dass diese Liste in allen Sprachen auf dem neuesten Stand ist!
+        co-dian-municipality: "Gemeinde"
+      reg:
+        capital: "Sozialkapital: %{amount}"
+        registration: "Registrierung:"
+        book: "Buch %{id}"
+        volume: "Band %{id}"
+        sheet: "Blatt %{id}"
+        section: "Abschnitt %{id}"
+        page: "Seite %{id}"
+        entry: "Eintrag %{id}"
+    address:
+      label: "%{label}:"
+      country: "(%{country})"

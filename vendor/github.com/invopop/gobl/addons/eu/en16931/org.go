@@ -1,0 +1,226 @@
+package en16931
+
+import (
+	"fmt"
+	"regexp"
+
+	"github.com/invopop/gobl/catalogues/iso"
+	"github.com/invopop/gobl/catalogues/untdid"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/regimes/dk"
+	"github.com/invopop/gobl/regimes/fr"
+	"github.com/invopop/gobl/rules"
+	"github.com/invopop/gobl/rules/is"
+	"github.com/invopop/gobl/tax"
+)
+
+// Map of GOBL Note keys to the corresponding UNTDID 4451 code.
+var orgNoteTextSubjectMap = map[cbc.Key]cbc.Code{
+	org.NoteKeyGoods:          "AAA",
+	org.NoteKeyPayment:        "PMT",
+	org.NoteKeyPaymentMethod:  "PMD",
+	org.NoteKeyPaymentTerm:    "AAB",
+	org.NoteKeyGeneral:        "AAI", // General information
+	org.NoteKeyLegal:          "ABL", // Government information
+	org.NoteKeyDangerousGoods: "AAC",
+	org.NoteKeyAck:            "AAE",
+	org.NoteKeyRate:           "AAF",
+	org.NoteKeyReason:         "ACD",
+	org.NoteKeyDispute:        "ACE",
+	org.NoteKeyCustomer:       "CUR",
+	org.NoteKeyGlossary:       "ACZ",
+	org.NoteKeyCustoms:        "CUS",
+	org.NoteKeyHandling:       "HAN",
+	org.NoteKeyPackaging:      "PKG",
+	org.NoteKeyLoading:        "LOI",
+	org.NoteKeyPrice:          "AAK",
+	org.NoteKeyPriority:       "PRI",
+	org.NoteKeyRegulatory:     "REG",
+	org.NoteKeySafety:         "SAF",
+	org.NoteKeyShipLine:       "SLR",
+	org.NoteKeySupplier:       "SUR",
+	org.NoteKeyTransport:      "TRA",
+	org.NoteKeyDelivery:       "DEL",
+	org.NoteKeyQuarantine:     "QIN",
+	org.NoteKeyTax:            "TXD",
+	org.NoteKeyOther:          "ZZZ",
+}
+
+// Map of GOBL Identity keys to the corresponding ISO/IEC 6523 code.
+var orgIdentitySchemeMap = map[cbc.Key]cbc.Code{
+	org.IdentityKeyGLN:  "0088",
+	org.IdentityKeyGTIN: "0160",
+}
+
+// Map of GOBL Identity types (codes) to the corresponding ISO/IEC 6523 code.
+// This is used for regime-specific identity types that use Type instead of Key.
+var orgIdentityTypeSchemeMap = map[cbc.Code]cbc.Code{
+	fr.IdentityTypeSIREN: "0002", // French SIREN (legal identifier)
+	fr.IdentityTypeSIRET: "0009", // French SIRET (private identifier)
+	dk.IdentityTypeCVR:   "0184", // Danish CVR-nummer
+}
+
+var (
+	orgInboxRegexpSchemeCode = regexp.MustCompile(`(\d{4}):.*`)
+)
+
+func normalizeOrgNote(n *org.Note) {
+	if n == nil {
+		return
+	}
+
+	if code, ok := orgNoteTextSubjectMap[n.Key]; ok {
+		n.Ext = n.Ext.Merge(tax.ExtensionsOf(cbc.CodeMap{
+			untdid.ExtKeyTextSubject: code,
+		}))
+	}
+}
+
+func normalizeOrgIdentity(i *org.Identity) {
+	if i == nil {
+		return
+	}
+
+	// Check for key-based identity mapping first
+	if i.Key != cbc.KeyEmpty {
+		if scheme, ok := orgIdentitySchemeMap[i.Key]; ok {
+			i.Ext = i.Ext.Merge(tax.ExtensionsOf(cbc.CodeMap{
+				iso.ExtKeySchemeID: scheme,
+			}))
+			return
+		}
+	}
+
+	// Check for type-based identity mapping (used by some regimes like France)
+	if i.Type != cbc.CodeEmpty {
+		if scheme, ok := orgIdentityTypeSchemeMap[i.Type]; ok {
+			i.Ext = i.Ext.Merge(tax.ExtensionsOf(cbc.CodeMap{
+				iso.ExtKeySchemeID: scheme,
+			}))
+		}
+	}
+}
+
+func normalizeOrgInbox(i *org.Inbox) {
+	if i == nil || i.Code == cbc.CodeEmpty {
+		return
+	}
+	if orgInboxRegexpSchemeCode.MatchString(i.Code.String()) {
+		i.Scheme = cbc.Code(i.Code.String()[0:4])
+		i.Code = cbc.Code(i.Code.String()[5:])
+	}
+}
+
+// normalizeOrgParty migrates a peppol-keyed inbox into an
+// `iso6523-actorid-upis::<scheme>:<code>` endpoint so callers can
+// adopt the new endpoints model without touching their existing
+// party data. The source inbox is left in place — many operators
+// still consume it — so this is purely additive. If the party
+// already carries an `iso6523-actorid-upis` endpoint, no copy is
+// made.
+func normalizeOrgParty(p *org.Party) {
+	if p == nil {
+		return
+	}
+	normalizeOrgPartyEndpoints(p)
+}
+
+func normalizeOrgPartyEndpoints(p *org.Party) {
+	if p.Endpoint(iso.ActorIDScheme) != nil {
+		// ISO 6523 endpoint already present, nothing to derive.
+		return
+	}
+	for _, in := range p.Inboxes {
+		if in == nil || in.Key != org.InboxKeyPeppol {
+			continue
+		}
+		if in.Scheme == cbc.CodeEmpty || in.Code == cbc.CodeEmpty {
+			continue
+		}
+		p.Endpoints = append(p.Endpoints, &org.Endpoint{
+			Label: in.Label,
+			URI:   cbc.URI(iso.ActorIDScheme + "::" + in.Scheme.String() + ":" + in.Code.String()),
+		})
+		return
+	}
+}
+
+func orgAttachmentRules() *rules.Set {
+	return rules.For(new(org.Attachment),
+		rules.Field("code",
+			rules.Assert("01", "code is required", is.Present),
+		),
+	)
+}
+
+func orgPartyRules() *rules.Set {
+	return rules.For(new(org.Party),
+		rules.Field("endpoints",
+			rules.Assert("04", fmt.Sprintf("cannot have more than one '%s' endpoint (BT-34, BT-49)", iso.ActorIDScheme),
+				is.Func("single iso6523 endpoint", orgPartySingleISO6523Endpoint),
+			),
+		),
+		rules.Field("identities",
+			rules.Assert("02", "only one identity may have the legal scope (BT-30, BT-47)",
+				is.Func("single legal-scope identity", orgIdentitiesSingleLegalScope),
+			),
+			rules.Assert("03", "only one identity may have the tax scope (BT-31, BT-48)",
+				is.Func("single tax-scope identity", orgIdentitiesSingleTaxScope),
+			),
+		),
+	)
+}
+
+func orgIdentitiesScopeCount(identities []*org.Identity, scope cbc.Key) int {
+	n := 0
+	for _, id := range identities {
+		if id != nil && id.Scope.Has(scope) {
+			n++
+		}
+	}
+	return n
+}
+
+func orgIdentitiesSingleLegalScope(val any) bool {
+	identities, ok := val.([]*org.Identity)
+	return ok && orgIdentitiesScopeCount(identities, org.IdentityScopeLegal) <= 1
+}
+
+func orgIdentitiesSingleTaxScope(val any) bool {
+	identities, ok := val.([]*org.Identity)
+	return ok && orgIdentitiesScopeCount(identities, org.IdentityScopeTax) <= 1
+}
+
+// orgPartySingleISO6523Endpoint reports whether the party carries at most one
+// ISO 6523 address. Other schemes are additional routes, not BT-34/BT-49.
+func orgPartySingleISO6523Endpoint(val any) bool {
+	endpoints, ok := val.([]*org.Endpoint)
+	n := 0
+	for _, e := range endpoints {
+		if e != nil && e.URI.Scheme() == iso.ActorIDScheme {
+			n++
+		}
+	}
+	return ok && n <= 1
+}
+
+func orgEndpointRules() *rules.Set {
+	return rules.For(new(org.Endpoint),
+		rules.Field("uri",
+			rules.When(cbc.URISchemeIn(iso.ActorIDScheme),
+				rules.Assert("01", fmt.Sprintf("endpoint uri requires both a scheme and a code, e.g. '%s::0225:356000000' (BR-62, BR-63)", iso.ActorIDScheme),
+					cbc.URIOpaqueMatches(`^:[^:]+:.+$`),
+				),
+			),
+		),
+	)
+}
+
+func orgAddressRules() *rules.Set {
+	return rules.For(new(org.Address),
+		rules.Field("country",
+			rules.Assert("01", "country is required (BR-9, BR-11, BR-20, BR-57)", is.Present),
+		),
+	)
+}

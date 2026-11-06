@@ -1,0 +1,347 @@
+package bill
+
+import (
+	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/num"
+	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/rules"
+	"github.com/invopop/gobl/rules/is"
+	"github.com/invopop/gobl/tax"
+	"github.com/invopop/gobl/uuid"
+)
+
+// Line is a single row in an invoice.
+type Line struct {
+	uuid.Identify
+	// Line number inside the parent (calculated)
+	Index int `json:"i" jsonschema:"title=Index" jsonschema_extras:"calculated=true"`
+	// Number of items.
+	Quantity num.Amount `json:"quantity" jsonschema:"title=Quantity"`
+	// Single identifier provided by the supplier for an object on which the
+	// line item is based and is not considered a universal identity. Examples
+	// include a subscription number, telephone number, meter point, etc.
+	// Utilize the label property to provide a description of the identifier.
+	Identifier *org.Identity `json:"identifier,omitempty" jsonschema:"title=Identifier"`
+	// A period of time relevant to when the service or item is delivered.
+	Period *cal.Period `json:"period,omitempty" jsonschema:"title=Period"`
+	// Order reference for a specific line within a purchase order provided by the buyer.
+	Order cbc.Code `json:"order,omitempty" jsonschema:"title=Order Reference"`
+	// Buyer accounting reference cost code to associate with the line.
+	Cost cbc.Code `json:"cost,omitempty" jsonschema:"title=Cost Reference"`
+	// Details about the item, service, or good being sold.
+	Item *org.Item `json:"item" jsonschema:"title=Item"`
+	// Breakdown of the line item for more detailed information. The sum of all lines
+	// will be used for the item price.
+	Breakdown []*SubLine `json:"breakdown,omitempty" jsonschema:"title=Breakdown"`
+	// Result of quantity multiplied by the item's price (calculated).
+	Sum *num.Amount `json:"sum,omitempty" jsonschema:"title=Sum" jsonschema_extras:"calculated=true"`
+	// Discounts applied to this line.
+	Discounts []*LineDiscount `json:"discounts,omitempty" jsonschema:"title=Discounts"`
+	// Charges applied to this line.
+	Charges []*LineCharge `json:"charges,omitempty" jsonschema:"title=Charges"`
+	// Map of taxes to be applied and used in the document totals.
+	Taxes tax.Set `json:"taxes,omitempty" jsonschema:"title=Taxes"`
+	// Total line amount after applying discounts to the sum (calculated).
+	Total *num.Amount `json:"total,omitempty" jsonschema:"title=Total"  jsonschema_extras:"calculated=true"`
+
+	// List of substituted lines. Useful for deliveries or corrective documents in order
+	// to indicate to the recipient which of the requested lines are being replaced.
+	// This is for purely informative purposes, and will not be used for calculations.
+	Substituted []*SubLine `json:"substituted,omitempty" jsonschema:"title=Substituted"`
+
+	// Seller of the item if different from the supplier or ordering seller. This can be
+	// useful for marketplace or drop-ship scenarios in locations that require the
+	// original seller to be indicated.
+	Seller *org.Party `json:"seller,omitempty" jsonschema:"title=Seller"`
+
+	// Set of specific notes for this line that may be required for
+	// clarification.
+	Notes []*org.Note `json:"notes,omitempty" jsonschema:"title=Notes"`
+
+	// Extension codes that apply to the line.
+	Ext tax.Extensions `json:"ext,omitzero" jsonschema:"title=Extensions"`
+}
+
+// SubLine provides a simplified line that can be embedded inside other lines
+// to provide a more detailed breakdown of the items being sold or substituted.
+type SubLine struct {
+	uuid.Identify
+	// Line number inside the parent (calculated)
+	Index int `json:"i" jsonschema:"title=Index" jsonschema_extras:"calculated=true"`
+	// Number of items.
+	Quantity num.Amount `json:"quantity" jsonschema:"title=Quantity"`
+	// Single identifier provided by the supplier for an object on which the
+	// line item is based and is not considered a universal identity. Examples
+	// include a subscription number, telephone number, meter point, etc.
+	// Utilize the label property to provide a description of the identifier.
+	Identifier *org.Identity `json:"identifier,omitempty" jsonschema:"title=Identifier"`
+	// A period of time relevant to when the service or item is delivered.
+	Period *cal.Period `json:"period,omitempty" jsonschema:"title=Period"`
+	// Order reference for a specific line within a purchase order provided by the buyer.
+	Order cbc.Code `json:"order,omitempty" jsonschema:"title=Order Reference"`
+	// Buyer accounting reference cost code to associate with the line.
+	Cost cbc.Code `json:"cost,omitempty" jsonschema:"title=Cost Reference"`
+	// Details about the item, service, or good being sold.
+	Item *org.Item `json:"item" jsonschema:"title=Item"`
+	// Result of quantity multiplied by the item's price (calculated).
+	Sum *num.Amount `json:"sum,omitempty" jsonschema:"title=Sum" jsonschema_extras:"calculated=true"`
+	// Discounts applied to this sub-line.
+	Discounts []*LineDiscount `json:"discounts,omitempty" jsonschema:"title=Discounts"`
+	// Charges applied to this sub-line.
+	Charges []*LineCharge `json:"charges,omitempty" jsonschema:"title=Charges"`
+	// Total sub-line amount after applying discounts to the sum (calculated).
+	Total *num.Amount `json:"total,omitempty" jsonschema:"title=Total"  jsonschema_extras:"calculated=true"`
+	// Set of specific notes for this sub-line that may be required for
+	// clarification.
+	Notes []*org.Note `json:"notes,omitempty" jsonschema:"title=Notes"`
+}
+
+// GetTaxes responds with the array of tax rates applied to this line.
+// This implements the tax.TaxableLine interface.
+func (l *Line) GetTaxes() tax.Set {
+	return l.Taxes
+}
+
+// GetTotal provides the final total for this line, excluding any tax calculations.
+// This implements the tax.TaxableLine interface.
+func (l *Line) GetTotal() num.Amount {
+	if l.Total == nil {
+		return num.AmountZero
+	}
+	return *l.Total
+}
+
+func lineRules() *rules.Set {
+	return rules.For(new(Line),
+		rules.Field("i",
+			rules.Assert("01", "index is required", is.Present),
+		),
+		rules.Field("quantity",
+			rules.Assert("02", "quantity is required", is.Present),
+		),
+		rules.Field("item",
+			rules.Assert("03", "item is required", is.Present),
+		),
+		rules.When(is.Func("item has price", lineItemHasPrice),
+			rules.Field("sum",
+				rules.Assert("04", "sum is required when item has a price", is.Present),
+			),
+			rules.Field("total",
+				rules.Assert("05", "total is required when item has a price", is.Present),
+			),
+		),
+		rules.Assert("06", "item list price, discount, and per cannot be combined with a breakdown",
+			is.Func("no item price details with breakdown", lineBreakdownWithoutItemPriceDetails),
+		),
+	)
+}
+
+func lineBreakdownWithoutItemPriceDetails(val any) bool {
+	switch v := val.(type) {
+	case *Line:
+		return v == nil || len(v.Breakdown) == 0 || !itemHasPriceDetails(v.Item)
+	case Line:
+		return len(v.Breakdown) == 0 || !itemHasPriceDetails(v.Item)
+	}
+	return true
+}
+
+func itemHasPriceDetails(i *org.Item) bool {
+	return i != nil && (i.List != nil || i.Discount != nil || i.Per != nil)
+}
+
+func subLineRules() *rules.Set {
+	return rules.For(new(SubLine),
+		rules.Field("i",
+			rules.Assert("01", "index is required", is.Present),
+		),
+		rules.Field("quantity",
+			rules.Assert("02", "quantity is required", is.Present),
+		),
+		rules.Field("item",
+			rules.Assert("03", "item is required", is.Present),
+		),
+		rules.When(is.Func("item has price", subLineItemHasPrice),
+			rules.Field("sum",
+				rules.Assert("04", "sum is required when item has a price", is.Present),
+			),
+			rules.Field("total",
+				rules.Assert("05", "total is required when item has a price", is.Present),
+			),
+		),
+	)
+}
+
+func lineItemHasPrice(val any) bool {
+	switch v := val.(type) {
+	case *Line:
+		return v != nil && v.Item != nil && v.Item.Price != nil
+	case Line:
+		return v.Item != nil && v.Item.Price != nil
+	}
+	return false
+}
+
+func subLineItemHasPrice(val any) bool {
+	switch v := val.(type) {
+	case *SubLine:
+		return v != nil && v.Item != nil && v.Item.Price != nil
+	case SubLine:
+		return v.Item != nil && v.Item.Price != nil
+	}
+	return false
+}
+
+// IsEmpty returns true if the sub-line is empty.
+func (sl *SubLine) IsEmpty() bool {
+	return sl == nil ||
+		(sl.UUID.IsZero() &&
+			sl.Quantity.IsZero() &&
+			sl.Identifier == nil &&
+			sl.Period == nil &&
+			sl.Order.IsEmpty() &&
+			sl.Cost.IsEmpty() &&
+			sl.Item == nil &&
+			sl.Sum == nil &&
+			len(sl.Discounts) == 0 &&
+			len(sl.Charges) == 0 &&
+			sl.Total == nil &&
+			len(sl.Notes) == 0)
+}
+
+// CleanSubLines removes any nil or empty sub-lines from the
+// list.
+func CleanSubLines(sls []*SubLine) []*SubLine {
+	cleaned := make([]*SubLine, 0, len(sls))
+	for _, sl := range sls {
+		if !sl.IsEmpty() {
+			cleaned = append(cleaned, sl)
+		}
+	}
+	return cleaned
+}
+
+func normalizeLine(l *Line) {
+	normalizeLineItemPrice(l)
+	l.Taxes = tax.CleanSet(l.Taxes)
+	l.Discounts = CleanLineDiscounts(l.Discounts)
+	l.Charges = CleanLineCharges(l.Charges)
+	l.Breakdown = CleanSubLines(l.Breakdown)
+}
+
+func normalizeSubLine(sl *SubLine) {
+	normalizeSubLineItemPrice(sl)
+	sl.Discounts = CleanLineDiscounts(sl.Discounts)
+	sl.Charges = CleanLineCharges(sl.Charges)
+}
+
+func normalizeLineItemPrice(l *Line) {
+	if l == nil || l.Item == nil || l.Item.Price == nil {
+		return
+	}
+	i := l.Item
+	if i.Price.IsNegative() {
+		p := i.Price.Negate()
+		i.Price = &p
+		l.Quantity = l.Quantity.Negate()
+	}
+}
+
+func normalizeSubLineItemPrice(sl *SubLine) {
+	if sl == nil || sl.Item == nil || sl.Item.Price == nil {
+		return
+	}
+	i := sl.Item
+	if i.Price.IsNegative() {
+		p := i.Price.Negate()
+		i.Price = &p
+		sl.Quantity = sl.Quantity.Negate()
+	}
+}
+
+func removeLineIncludedTaxes(line *Line, cat cbc.Code) *Line {
+	accuracy := defaultTaxRemovalAccuracy
+	rate := line.Taxes.Get(cat)
+	if rate == nil || rate.Percent == nil || line.Item == nil {
+		return line
+	}
+
+	l2 := *line
+	l2i := *line.Item
+
+	l2i.AltPrices = nil // empty alternative prices
+	l2i.List = nil      // empty list price and discount
+	l2i.Discount = nil
+	if p := itemPrice(line.Item); p != nil {
+		price := p.Upscale(accuracy).Remove(*rate.Percent)
+		l2i.Price = &price
+	}
+	// assume sum and total will be calculated automatically
+
+	l2.Breakdown = removeSubLinesIncludedTaxes(line.Breakdown, rate, accuracy)
+	l2.Discounts = removeLineDiscountsIncludedTaxes(line.Discounts, rate, accuracy)
+	l2.Charges = removeLineChargesIncludedTaxes(line.Charges, rate, accuracy)
+	l2.Substituted = removeSubLinesIncludedTaxes(line.Substituted, rate, accuracy)
+	l2.Item = &l2i
+
+	return &l2
+}
+
+func removeSubLinesIncludedTaxes(sls []*SubLine, tc *tax.Combo, exp uint32) []*SubLine {
+	if len(sls) == 0 {
+		return nil
+	}
+	rows := make([]*SubLine, len(sls))
+	for i, sl := range sls {
+		sl2 := *sl
+		sl2i := *sl.Item
+		sl2i.AltPrices = nil
+		sl2i.List = nil
+		sl2i.Discount = nil
+		if p := itemPrice(sl.Item); p != nil {
+			price := p.Upscale(exp).Remove(*tc.Percent)
+			sl2i.Price = &price
+		}
+		sl2.Discounts = removeLineDiscountsIncludedTaxes(sl.Discounts, tc, exp)
+		sl2.Charges = removeLineChargesIncludedTaxes(sl.Charges, tc, exp)
+		sl2.Item = &sl2i
+		rows[i] = &sl2
+	}
+	return rows
+}
+
+// itemPrice provides the item's price, or the price derived from its list
+// price if not yet calculated.
+func itemPrice(item *org.Item) *num.Amount {
+	if item.Price != nil {
+		return item.Price
+	}
+	return item.PriceFromList()
+}
+
+func removeLineDiscountsIncludedTaxes(discounts []*LineDiscount, tc *tax.Combo, exp uint32) []*LineDiscount {
+	if len(discounts) == 0 {
+		return nil
+	}
+	rows := make([]*LineDiscount, len(discounts))
+	for i, v := range discounts {
+		d := *v
+		d.Amount = d.Amount.Upscale(exp).Remove(*tc.Percent)
+		rows[i] = &d
+	}
+	return rows
+}
+
+func removeLineChargesIncludedTaxes(charges []*LineCharge, tc *tax.Combo, exp uint32) []*LineCharge {
+	if len(charges) == 0 {
+		return nil
+	}
+	rows := make([]*LineCharge, len(charges))
+	for i, v := range charges {
+		d := *v
+		d.Amount = d.Amount.Upscale(exp).Remove(*tc.Percent)
+		rows[i] = &d
+	}
+	return rows
+}

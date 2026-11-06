@@ -1,0 +1,269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gobl.org/draft-0/bill/invoice",
+  "$ref": "#/$defs/bill.Invoice",
+  "$defs": {
+    "bill.Invoice": {
+      "properties": {
+        "$regime": {
+          "$ref": "https://gobl.org/draft-0/tax/regime-code",
+          "title": "Tax Regime",
+          "description": "Country code that identifies the tax regime applicable to the document.\nIt determines which country-specific tax rules, normalizations, and validations are applied.\nIt may be determined automatically via normalization of a supplier or issuer tax identity\ncountry code."
+        },
+        "$addons": {
+          "$ref": "https://gobl.org/draft-0/tax/addon-list",
+          "title": "Addons",
+          "description": "Keys identifying the tax addons that apply special normalization, scenarios, and\nvalidation rules to the document."
+        },
+        "$tags": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/cbc/key",
+            "anyOf": [
+              {
+                "const": "simplified",
+                "title": "Simplified Invoice"
+              },
+              {
+                "const": "reverse-charge",
+                "title": "Reverse Charge"
+              },
+              {
+                "const": "self-billed",
+                "title": "Self-billed"
+              },
+              {
+                "const": "customer-rates",
+                "title": "Customer rates"
+              },
+              {
+                "const": "partial",
+                "title": "Partial"
+              },
+              {
+                "const": "bypass",
+                "title": "Bypass"
+              },
+              {
+                "const": "prepayment",
+                "title": "Prepayment"
+              },
+              {
+                "const": "factoring",
+                "title": "Factoring"
+              },
+              {
+                "pattern": "^(?:[a-z]|[a-z0-9][a-z0-9-+]*[a-z0-9])$",
+                "title": "Any"
+              }
+            ]
+          },
+          "type": "array",
+          "title": "Tags",
+          "description": "Keys that identify specific tax scenarios or requirements that may change the\ncontents of the document or imply a specific meaning. Converters may use tags to\nidentify situations that do not have a specific extension; for example, self-billed\nor partial invoices are identified by their respective tags."
+        },
+        "uuid": {
+          "type": "string",
+          "format": "uuid",
+          "title": "UUID",
+          "description": "Universally Unique Identifier."
+        },
+        "type": {
+          "$ref": "https://gobl.org/draft-0/cbc/key",
+          "oneOf": [
+            {
+              "const": "standard",
+              "title": "Standard",
+              "description": "A regular commercial invoice document between a supplier and customer."
+            },
+            {
+              "const": "proforma",
+              "title": "Proforma",
+              "description": "For a client's validation before sending a final invoice."
+            },
+            {
+              "const": "corrective",
+              "title": "Corrective",
+              "description": "Corrected invoice that completely *replaces* the preceding document."
+            },
+            {
+              "const": "credit-note",
+              "title": "Credit Note",
+              "description": "Reflects a refund either partial or complete of the preceding document. A \ncredit note effectively *extends* the previous document."
+            },
+            {
+              "const": "debit-note",
+              "title": "Debit Note",
+              "description": "An additional set of charges to be added to the preceding document."
+            },
+            {
+              "const": "other",
+              "title": "Other",
+              "description": "Any other type of invoice that does not fit into the standard categories and implies\nthat any scenarios defined in tax regimes or addons will not be applied.\n\nThis is useful for being able to create invoices with custom types in extensions,\nbut is not recommended for general use."
+            }
+          ],
+          "title": "Type",
+          "description": "Type of invoice document. May be restricted by local tax regime requirements.",
+          "calculated": true
+        },
+        "series": {
+          "$ref": "https://gobl.org/draft-0/cbc/code",
+          "title": "Series",
+          "description": "Identifies groups of invoices by date, business area, project, type of document,\ncustomer type, a combination of any, or other company specific data. If the output\nformat does not support the series as a separate field, it will be prepended to the\ncode with a dash (`-`) for separation."
+        },
+        "code": {
+          "$ref": "https://gobl.org/draft-0/cbc/code",
+          "title": "Code",
+          "description": "Sequential identifier that uniquely identifies the invoice. May be left empty\ninitially, but is **required** to **sign** the invoice."
+        },
+        "issue_date": {
+          "$ref": "https://gobl.org/draft-0/cal/date",
+          "title": "Issue Date",
+          "description": "Date when the invoice was created and issued. Today's date is used if none is set.\nThere are often legal restrictions on how far back or in the future an invoice can be\nissued.",
+          "calculated": true
+        },
+        "issue_time": {
+          "$ref": "https://gobl.org/draft-0/cal/time",
+          "title": "Issue Time",
+          "description": "Optional time of day when the invoice was issued. Some regions and formats may\nrequire this field; otherwise it can be left nil.",
+          "calculated": true
+        },
+        "op_date": {
+          "$ref": "https://gobl.org/draft-0/cal/date",
+          "title": "Operation Date",
+          "description": "Date when the operation defined by the invoice became effective."
+        },
+        "value_date": {
+          "$ref": "https://gobl.org/draft-0/cal/date",
+          "title": "Value Date",
+          "description": "When the taxes of the document become accountable. Defaults to the issue date."
+        },
+        "currency": {
+          "$ref": "https://gobl.org/draft-0/currency/code",
+          "title": "Currency",
+          "description": "Currency for all invoice amounts and totals, unless explicitly stated otherwise.",
+          "calculated": true
+        },
+        "exchange_rates": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/currency/exchange-rate"
+          },
+          "type": "array",
+          "title": "Exchange Rates",
+          "description": "Exchange rates to be used when converting the document's monetary values into other currencies."
+        },
+        "preceding": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/org/document-ref"
+          },
+          "type": "array",
+          "title": "Preceding Details",
+          "description": "Document references for previous invoices that this document replaces or extends."
+        },
+        "tax": {
+          "$ref": "https://gobl.org/draft-0/bill/tax",
+          "title": "Tax",
+          "description": "Special billing tax configuration options."
+        },
+        "supplier": {
+          "$ref": "https://gobl.org/draft-0/org/party",
+          "title": "Supplier",
+          "description": "The entity supplying the goods or services and usually responsible for paying taxes."
+        },
+        "customer": {
+          "$ref": "https://gobl.org/draft-0/org/party",
+          "title": "Customer",
+          "description": "Legal entity receiving the goods or services, may be nil in certain circumstances\nsuch as simplified invoices."
+        },
+        "lines": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/bill/line"
+          },
+          "type": "array",
+          "title": "Lines",
+          "description": "List of invoice lines representing each of the items sold to the customer."
+        },
+        "discounts": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/bill/discount"
+          },
+          "type": "array",
+          "title": "Discounts",
+          "description": "Discounts or allowances applied to the complete invoice"
+        },
+        "charges": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/bill/charge"
+          },
+          "type": "array",
+          "title": "Charges",
+          "description": "Charges or surcharges applied to the complete invoice"
+        },
+        "ordering": {
+          "$ref": "https://gobl.org/draft-0/bill/ordering",
+          "title": "Ordering Details",
+          "description": "Ordering details including document references and buyer or seller parties."
+        },
+        "payment": {
+          "$ref": "https://gobl.org/draft-0/bill/payment-details",
+          "title": "Payment Details",
+          "description": "Information on when, how, and to whom the invoice should be paid."
+        },
+        "delivery": {
+          "$ref": "https://gobl.org/draft-0/bill/delivery-details",
+          "title": "Delivery Details",
+          "description": "Specific details on delivery of the goods referenced in the invoice."
+        },
+        "totals": {
+          "$ref": "https://gobl.org/draft-0/bill/totals",
+          "title": "Totals",
+          "description": "Summary of all the invoice totals, including taxes (calculated).",
+          "calculated": true
+        },
+        "notes": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/org/note"
+          },
+          "type": "array",
+          "title": "Notes",
+          "description": "Unstructured information that is relevant to the invoice, such as correction or additional\nlegal details."
+        },
+        "complements": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/schema/object"
+          },
+          "type": "array",
+          "title": "Complements",
+          "description": "Additional complementary objects that add relevant information to the invoice."
+        },
+        "meta": {
+          "$ref": "https://gobl.org/draft-0/cbc/meta",
+          "title": "Meta",
+          "description": "Additional semi-structured data that doesn't fit into the body of the invoice."
+        },
+        "attachments": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/org/attachment"
+          },
+          "type": "array",
+          "title": "Attachments",
+          "description": "Supporting documents that are not included in the main document. Do not use for\nalternative versions of the PDF; use \"links\" inside the envelope headers instead."
+        }
+      },
+      "type": "object",
+      "required": [
+        "type",
+        "issue_date",
+        "currency",
+        "supplier",
+        "totals"
+      ],
+      "description": "Invoice represents a payment claim for goods or services supplied under conditions agreed between the supplier and the customer.",
+      "recommended": [
+        "$regime",
+        "series",
+        "code",
+        "lines"
+      ]
+    }
+  }
+}

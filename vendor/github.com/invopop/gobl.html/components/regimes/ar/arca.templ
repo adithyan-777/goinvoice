@@ -1,0 +1,173 @@
+package ar
+
+import (
+	"fmt"
+	"slices"
+
+	"github.com/invopop/gobl"
+	arca "github.com/invopop/gobl.ar.arca/addon"
+	"github.com/invopop/gobl.html/components/images"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/tax"
+)
+
+// ARCAVATLegend renders the tax status legend (e.g. "IVA RESPONSABLE INSCRIPTO")
+// underneath the supplier or customer name on Argentine invoices.
+templ ARCAVATLegend(doc internal.Document, party *org.Party, role string) {
+	if legend := arcaVATLegend(doc, party, role); legend != "" {
+		<div class="arca-vat-legend">{ legend }</div>
+	}
+}
+
+// TitleType renders the ARCA document type title (e.g. "Factura A", "Nota de Crédito B")
+// based on the ar-arca-doc-type extension code.
+templ TitleType(doc internal.Document) {
+	if isArgentine(doc) {
+		@titleType(doc)
+	}
+}
+
+templ titleType(doc internal.Document) {
+	if typ := arcaDocType(doc); typ != "" {
+		@t.T("regimes.ar.title." + typ)
+	}
+}
+
+func isArgentine(doc internal.Document) bool {
+	ext := doc.GetExt()
+	if ext.IsZero() {
+		return false
+	}
+	return !ext.Get(arca.ExtKeyDocType).IsEmpty()
+}
+
+func arcaDocType(doc internal.Document) string {
+	ext := doc.GetExt()
+	if ext.IsZero() {
+		return ""
+	}
+	dt := ext.Get(arca.ExtKeyDocType)
+	if dt.IsEmpty() {
+		return ""
+	}
+	return dt.String()
+}
+
+// ARCADocTypeLetter renders the ARCA document type letter box (A, B, C, or T)
+// in the invoice header, if the document has an ar-arca-doc-type extension.
+templ ARCADocTypeLetter(doc internal.Document) {
+	if letter, code := arcaDocTypeLetter(doc.GetExt()); letter != "" {
+		<div class="arca-doc-type">
+			<div class="letter">{ letter }</div>
+			<div class="code">{ code }</div>
+		</div>
+	}
+}
+
+func arcaDocTypeLetter(ext tax.Extensions) (string, string) {
+	if ext.IsZero() {
+		return "", ""
+	}
+	dt := ext.Get(arca.ExtKeyDocType)
+	if dt.IsEmpty() {
+		return "", ""
+	}
+	code := cbc.Code(dt.String())
+	var letter string
+	switch {
+	case slices.Contains(arca.DocTypesA, code):
+		letter = "A"
+	case slices.Contains(arca.DocTypesB, code):
+		letter = "B"
+	case slices.Contains(arca.DocTypesC, code):
+		letter = "C"
+	case slices.Contains(arca.DocTypesT, code):
+		letter = "T"
+	default:
+		return "", ""
+	}
+	return letter, fmt.Sprintf("Cod. %s", dt.String())
+}
+
+templ ARCAQR(env *gobl.Envelope) {
+	if cae := arcaCAE(env); cae != "" {
+		if caeExpiry := arcaCAEExpiry(env); caeExpiry != "" {
+			if qr := arcaQR(env); qr != "" {
+				@generateQR(cae, caeExpiry, qr)
+			}
+		}
+	}
+}
+
+templ generateQR(cae, caeExpiry, qr string) {
+	<style type="text/css">
+        .arca-qr {
+			display: flex;
+            font-family: sans-serif;
+            font-size: 9pt;
+        }
+		.arca-qr .image {
+			margin-right: 6mm;
+		}
+		.arca-qr .text {
+			margin-top: auto;
+			margin-bottom: auto;
+		}
+		.arca-qr .text .cae {
+			font-weight: bold;
+			margin-bottom: 2mm;
+		}
+        .arca-qr img {
+            width: 24mm;
+            height: 24mm;
+        }
+    </style>
+	<section class="arca-qr">
+		<div class="image">
+			<a href={ templ.URL(qr) }>
+				@images.QR(qr)
+			</a>
+		</div>
+		<div class="text">
+			<div class="cae">
+				CAE N°: { cae }
+			</div>
+			<div class="cae-expiry">
+				Fecha de Vto. de CAE: { caeExpiry }
+			</div>
+		</div>
+	</section>
+}
+
+func arcaCAE(env *gobl.Envelope) string {
+    for _, stamp := range env.Head.Stamps {
+        switch stamp.Provider {
+        case arca.StampCAE:
+            return stamp.Value
+        }
+    }
+    return ""
+}
+
+func arcaCAEExpiry(env *gobl.Envelope) string {
+    for _, stamp := range env.Head.Stamps {
+        switch stamp.Provider {
+        case arca.StampCAEExpiry:
+            return stamp.Value
+        }
+    }
+    return ""
+}
+
+func arcaQR(env *gobl.Envelope) string {
+    for _, stamp := range env.Head.Stamps {
+        switch stamp.Provider {
+        case arca.StampQR:
+            return stamp.Value
+        }
+    }
+    return ""
+}

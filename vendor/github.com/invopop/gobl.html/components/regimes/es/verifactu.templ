@@ -1,0 +1,73 @@
+package es
+
+import (
+	"github.com/invopop/gobl"
+	"github.com/invopop/gobl.html/components/images"
+	"github.com/invopop/gobl/addons/es/verifactu"
+	"github.com/invopop/gobl/head"
+)
+
+// VerifactuQR generates a QR code area for the Verifactu code in the given envelope.
+templ VerifactuQR(env *gobl.Envelope) {
+	if qr := verifactuQR(env); qr != "" {
+		@generateVerifactuQR(qr)
+	}
+}
+
+// HasVerifactuQR returns a boolean indicating whether the envelope has a Verifactu QR or not.
+func HasVerifactuQR(env *gobl.Envelope) bool {
+	if qr := verifactuQR(env); qr != "" {
+		return true
+	}
+	return false
+}
+
+templ generateVerifactuQR(qr string) {
+	<style type="text/css">
+		.verifactu {
+			break-inside: avoid;
+			text-align: center;
+		}
+		.verifactu p {
+			color: #030712;
+			text-align: center;
+			font-family: Inter;
+			font-size: 9pt;
+			font-weight: 600;
+		}
+		.verifactu .label {
+			color: #4B5563;
+			font-family: "Geist Mono", monospace;
+			font-size:9pt;
+			text-align: center; 
+		}
+		.verifactu img {
+			width: 35mm;
+			height: 35mm;
+			margin: 1mm 0;
+		}
+	</style>
+	<section class="qr">
+		<div class="verifactu">
+			<p>
+				QR tributario:
+			</p>
+			<div class="qr">
+				<a href={ templ.URL(qr) }>
+					@images.QR(qr)
+				</a>
+			</div>
+			<div class="label">
+				VERI*FACTU
+			</div>
+		</div>
+	</section>
+}
+
+func verifactuQR(env *gobl.Envelope) string {
+	stamp := head.GetStamp(env.Head.Stamps, verifactu.StampQR)
+	if stamp != nil {
+		return stamp.Value
+	}
+	return ""
+}

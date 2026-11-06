@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gobl.org/draft-0/head/header",
+  "$ref": "#/$defs/head.Header",
+  "$defs": {
+    "head.Header": {
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid",
+          "title": "UUID",
+          "description": "Unique UUIDv1 identifier for the envelope."
+        },
+        "dig": {
+          "$ref": "https://gobl.org/draft-0/dsig/digest",
+          "title": "Digest",
+          "description": "Digest of the canonical JSON body."
+        },
+        "stamps": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/head/stamp"
+          },
+          "type": "array",
+          "title": "Stamps",
+          "description": "Seals of approval from other organisations that can only be added to\nnon-draft envelopes."
+        },
+        "links": {
+          "items": {
+            "$ref": "https://gobl.org/draft-0/head/link"
+          },
+          "type": "array",
+          "title": "Links",
+          "description": "URLs to other resources related to this envelope. Unlike stamps, links can be\nadded even in the draft state."
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Tags",
+          "description": "Set of labels that describe but have no influence on the data."
+        },
+        "meta": {
+          "$ref": "https://gobl.org/draft-0/cbc/meta",
+          "title": "Meta",
+          "description": "Additional semi-structured information about this envelope."
+        },
+        "notes": {
+          "type": "string",
+          "title": "Notes",
+          "description": "Any information that may be relevant to other humans about this envelope."
+        },
+        "from": {
+          "$ref": "https://gobl.org/draft-0/cbc/uri",
+          "title": "From",
+          "description": "URI-form transport address of the envelope's issuer, e.g.\n\"gobl:invoices.example.com\" or \"iso6523-actorid-upis::9920:b123123123\"."
+        },
+        "to": {
+          "$ref": "https://gobl.org/draft-0/cbc/uri",
+          "title": "To",
+          "description": "URI-form transport address of the envelope's intended receiver."
+        },
+        "ignore": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Ignore",
+          "description": "Fully-qualified validation fault codes to suppress when validating this\nenvelope, e.g. \"GOBL-EU-EN16931-ORG-ITEM-01\". Intended for format-conversion\ncases where a specific, known fault is acceptable. Covered by the envelope\nsignature when sealed. Any code may be listed, including structural envelope\nand header codes, so use deliberately."
+        }
+      },
+      "type": "object",
+      "required": [
+        "uuid",
+        "dig"
+      ],
+      "description": "Header defines the metadata of the body."
+    }
+  }
+}

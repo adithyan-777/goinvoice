@@ -1,0 +1,259 @@
+it:
+  page: "Pagina %{page} di %{count}"
+  billing:
+    invoice: &invoice
+      title:
+        standard: "Fattura"
+        standard-simplified: "Fattura Semplificata"
+        proforma: "Fattura Proforma"
+        corrective: "Fattura Correttiva"
+        credit-note: "Nota di Credito"
+        debit-note: "Nota di Debito"
+        other: "Documento"
+        paid: "Pagato"
+        void: "Annullato"
+        self-billed: "Autofatturazione"
+        untdid:
+          "325": "Fattura proforma"
+          "380": "Fattura"
+          "381": "Nota di credito"
+          "383": "Nota di addebito"
+          "384": "Fattura rettificativa"
+          "326": "Fattura parziale"
+          "389": "Autofattura"
+          "261": "Nota di credito autofatturata"
+          "386": "Fattura di acconto"
+          "393": "Fattura ceduta (factoring)"
+          "396": "Nota di credito ceduta (factoring)"
+      summary: &summary
+        title: "Riepilogo"
+        issue_date: "Data Emissione"
+        value_date: "Data Valuta"
+        taxable_event: "Fatto generatore"
+        taxable_event_date: "Data del fatto generatore"
+        tax_points:
+          issue: "Data emissione"
+          delivery: "Data consegna"
+          payment: "Data pagamento"
+        operation_date: "Data Operazione"
+        currency: "Valuta"
+        currency_value: "%{desc} (%{code})"
+        preceding_document: "Documenti precedenti"
+        replaced_documents: "Documenti sostituiti"
+        corrected_documents: "Documenti corretti"
+        order: "Ordine"
+        order_period: "Periodo"
+        order_period_label: "%{label}"
+        order_period_range: "%{start} a %{end}"
+        contract: "Contratto"
+      supplier:
+        title: "Fornitore"
+      customer:
+        title: "Cliente"
+      receiver:
+        title: "Indirizzo di consegna"
+        date: "Data di consegna: %{date}"
+        period: "Data di consegna: dal %{start} al %{end}"
+      lines: &lines
+        title: "Righe"
+        i: "#"
+        ref: "Rif."
+        description: "Descrizione"
+        quantity: "Q.tà"
+        unit: "Unità"
+        price: "Prezzo"
+        discount: "Sconto"
+        charges: "Oneri"
+        total: "Totale"
+        no_percent: "—"
+        exemption: "Esenzione"
+        on_behalf_of: "Per conto di"
+        period: "Periodo"
+        period_range: "%{start} a %{end}"
+      totals: &totals
+        sum: "Somma"
+        discount: "Sconto"
+        charge: "Oneri"
+        title: "Totali"
+        prices_include: "%{tax} inclusa"
+        total: "Totale"
+        taxes: "Tasse"
+        total_with_tax: "Totale con tasse"
+        retained_tax: "Tasse trattenute"
+        rounding: "Arrotondamento"
+        total_to_pay: "Totale da pagare"
+        advance: "Anticipo"
+        due_sum: "Totale dovuto"
+        exchange_rate: "Cambio in %{to} (%{amount})"
+        carried_fwd: "Da riportare"
+        brought_fwd: "Riporto"
+      taxes:
+        title: "Tasse"
+        category: "Tassa"
+        base: "Base imponibile"
+        rate: "Aliquota"
+        amount: "Importo"
+        exemption: "Esenzione"
+        no_percent: "—"
+      payment: &payment
+        title: "Pagamento"
+        instructions: &payment_instructions
+          method: "Metodo di pagamento"
+          ref: "Riferimento"
+          ref_line: "Riferimento: %{ref}"
+          amount: "Importo"
+          description: "Descrizione"
+          bank_data: "Istruzioni per bonifico bancario"
+          card: "Pagamento con carta"
+          card_detail: "Pagamento effettuato con carta terminante in %{last4} intestata a %{holder}"
+          direct_debit: "Addebito diretto"
+          mandate_ref: "Mandato: %{ref}"
+          creditor: "ID creditore: %{creditor}"
+          observations: "Note di pagamento"
+          bank_name: "Banca: %{name}"
+          iban: "IBAN: %{iban}"
+          account_number: "Numero di conto: %{num}"
+          clearing: "Codice di compensazione: %{code}"
+          bic: "BIC: %{bic}"
+          online: "Link di pagamento"
+          methods:
+            card: "Carta di credito"
+            card+credit: "Carta di credito"
+            card+debit: "Carta di debito"
+            credit-transfer: "Bonifico bancario"
+            debit-transfer: "Trasferimento di debito"
+            cash: "Contanti"
+            direct-debit: "Addebito diretto"
+            online: "Online"
+        terms:
+          key: "Termini di pagamento"
+          notes: "Note sui termini di pagamento"
+          due_dates:
+            one: "Scadenza"
+            other: "Scadenze"
+          keys:
+            na: "Non specificato"
+            end_of_month: "Fine mese"
+            due_date: "In scadenza"
+            deferred: "Dopo la scadenza"
+            proximo: "Mese successivo"
+            instant: "Alla consegna della fattura"
+            elective: "Scelto dal cliente"
+            pending: "Da determinare dal fornitore"
+            advanced: "Pagato"
+            delivery: "Alla consegna"
+      notes:
+        title: "Note"
+
+    payment:
+      <<: *invoice
+      title:
+        request: "Richiesta di Pagamento"
+        advice: "Avviso di Pagamento"
+        receipt: "Ricevuta di Pagamento"
+        paid: "Pagato"
+        void: "Annullato"
+
+      lines:
+        <<: *lines
+        document: "Documento"
+
+      methods:
+        title: "Dettagli del Pagamento"
+        date: "Data"
+        amount: "Importo"
+        total: "Totale pagato"
+        instructions: *payment_instructions
+
+    delivery:
+      <<: *invoice
+      title:
+        advice: "Avviso di Consegna"
+        note: "Documento di Trasporto"
+        waybill: "Lettera di Vettura"
+        receipt: "Ricevuta di Consegna"
+
+      summary:
+        <<: *summary
+        despatch_date: "Data di Spedizione"
+        receive_date: "Data di Ricezione"
+        preceding_document: "Documento Precedente"
+
+      despatcher:
+        title: "Mittente"
+
+      receiver:
+        title: "Destinatario"
+
+      courier:
+        title: "Corriere"
+
+      tracking:
+        title: "Informazioni di Tracciamento"
+        code: "Codice di Tracciamento"
+        website: "Link di Tracciamento"
+
+    order:
+      <<: *invoice
+      title:
+        purchase: "Ordine di Acquisto"
+        sale: "Ordine di Vendita"
+        quote: "Preventivo"
+
+      summary:
+        <<: *summary
+        preceding_document: "Documento Precedente"
+        contract: "Contratto"
+        period: "Periodo"
+
+      buyer:
+        title: "Acquirente"
+
+      seller:
+        title: "Venditore"
+
+  org:
+    party:
+      tax_id: "%{label}: (%{country}) %{code}"
+      tax_id_no_country: "%{label}: %{code}"
+      tel: "Tel: %{num}"
+      tel_label: "Tel: %{num} (%{label})"
+      email:
+        one: "Email: %{addr}"
+        other: "Email: %{addr}"
+      email_label: "%{addr} (%{label})"
+      identity: "%{label}: %{code}"
+      identity_code: "Codice Identità"
+      identity_labels:
+        passport: "Passaporto"
+      po_box: "C.P. %{po_box}"
+      labels:
+        default: "Identità Fiscale"
+      ext: "%{label}: %{value}"
+      ext_map:
+        # Assicurarsi che questa lista sia aggiornata in tutte le lingue!
+        co-dian-municipality: "Comune"
+      reg:
+        capital: "Capitale sociale: %{amount}"
+        registration: "Registrazione:"
+        book: "Libro %{id}"
+        volume: "Volume %{id}"
+        sheet: "Foglio %{id}"
+        section: "Sezione %{id}"
+        page: "Pagina %{id}"
+        entry: "Voce %{id}"
+    address:
+      label: "%{label}:"
+      country: "(%{country})"
+  regimes:
+    it:
+      # Riferimento assegnato dall'AdE all'accettazione del documento
+      # commerciale; deve essere stampato sullo scontrino.
+      ade-ref: "Riferimento AdE"
+      # Riferimento assegnato dall'AdE all'annullamento del documento
+      # commerciale; deve essere stampato sullo scontrino annullato.
+      ade-void-ref: "Riferimento annullamento AdE"
+      title:
+        # Nome ufficiale del documento AdE (Risposta all'interpello n. 167/2020).
+        ticket: "Documento commerciale"
+        ticket-corrective: "Documento commerciale di annullamento"

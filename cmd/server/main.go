@@ -1,58 +1,116 @@
-// Command server runs the goinvoice HTTP server built with Gin.
+// Command server runs the Ittisal Invoice HTTP server built with Chi.
 //
 // Endpoints:
 //
 //	POST   /invoices[?dry_run=true|html=true]   create (calculate + validate + store)
 //	GET    /invoices                            list summaries
-//	GET    /invoices/:id                        full envelope as JSON (source of truth)
-//	GET    /invoices/:id/html[?locale|watermark|sandbox]  printable HTML (→ PDF)
-//	DELETE /invoices/:id                        delete (no legal cancellation semantics)
+//	GET    /invoices/{id}                       full envelope as JSON (source of truth)
+//	GET    /invoices/{id}/html[?locale|watermark|sandbox]  printable HTML + client-side PDF button
+//	DELETE /invoices/{id}                       delete (no legal cancellation semantics)
 //	GET    /healthz                             liveness probe
+//
+// Persistence: SQLite by default (SQLITE_PATH, default goinvoice.db).
+// Set SQLITE_PATH=:memory: for tests. Goose migrations in db/migrations
+// run automatically on boot.
+//
+// Config comes from the environment, with optional .env file support
+// (see .env.example): ADDR, SQLITE_PATH.
 package main
 
 import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/joho/godotenv"
+	"github.com/pressly/goose/v3"
+	_ "modernc.org/sqlite"
 
 	"github.com/neo/goinvoice/internal/handlers"
+	"github.com/neo/goinvoice/internal/seed"
 	"github.com/neo/goinvoice/internal/store"
 )
 
 func main() {
-	if os.Getenv("GIN_MODE") == "" {
-		gin.SetMode(gin.ReleaseMode)
+	// Load .env if present (real env vars win). Missing file is fine.
+	_ = godotenv.Load()
+
+	ctx := context.Background()
+	path := os.Getenv("SQLITE_PATH")
+	if path == "" {
+		path = "goinvoice.db"
+	}
+	// :memory: gives each pooled connection its own DB; use shared cache instead.
+	if path == ":memory:" {
+		path = "file::memory:?cache=shared"
 	}
 
-	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		log.Fatalf("open sqlite: %v", err)
+	}
+	defer db.Close()
 
-	entries := store.New()
-	handlers.New(entries).Register(r)
+	if err := goose.SetDialect("sqlite"); err != nil {
+		log.Fatalf("goose dialect: %v", err)
+	}
+	if err := goose.Up(db, "db/migrations"); err != nil {
+		log.Fatalf("goose up: %v", err)
+	}
 
-	r.GET("/healthz", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	sqliteStore := store.NewSQLite(db)
+	var entries store.Entries = sqliteStore
+	log.Printf("ittisal-invoice using sqlite (%s)", path)
+
+	// Demo data on first boot; never fatal.
+	seed.Seed(ctx, entries)
+
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID, middleware.Logger, middleware.Recoverer)
+
+	handlers.New(entries, sqliteStore).Register(r)
+	handlers.Static(r)
+
+	r.Get("/healthz", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
 	// Dump a full envelope to disk for inspection.
-	r.GET("/invoices/:id/envelope.json", func(c *gin.Context) {
-		env, ok := entries.Get(c.Param("id"))
-		if !ok {
-			c.JSON(http.StatusNotFound, gin.H{"error": "invoice not found"})
+	r.Get("/invoices/{id}/envelope.json", func(w http.ResponseWriter, req *http.Request) {
+		id := chi.URLParam(req, "id")
+		env, err := entries.Get(req.Context(), id)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": "invoice not found"})
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 			return
 		}
-		c.Header("Content-Disposition", "attachment; filename="+c.Param("id")+".json")
-		c.JSON(http.StatusOK, env)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", "attachment; filename="+id+".json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(env)
 	})
 
 	addr := os.Getenv("ADDR")
 	if addr == "" {
 		addr = ":8080"
 	}
-	log.Printf("goinvoice listening on %s", addr)
-	if err := r.Run(addr); err != nil {
+	log.Printf("ittisal-invoice listening on %s", addr)
+	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatal(err)
 	}
 }

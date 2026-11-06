@@ -1,0 +1,76 @@
+package pl
+
+import (
+	"regexp"
+
+	"github.com/invopop/gobl"
+	favat "github.com/invopop/gobl.pl.ksef/addon"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl.html/components/images"
+)
+
+var dianQRHTTPRegexp = regexp.MustCompile(`https.+`)
+
+templ KSeFQR(env *gobl.Envelope) {
+	if qr := ksefQR(env); qr != "" {
+		@generateQR(ksefID(env), qr)
+	}
+}
+
+templ generateQR(id, qr string) {
+	<style type="text/css">
+        .ksef-qr {
+			display: flex;
+            font-family: "Geist Mono", monospace;
+            font-size: 7pt;
+        }
+		.ksef-qr .image {
+			margin-right: 6mm;
+		}
+		.ksef-qr .text {
+			margin-top: auto;
+			word-break: break-all;
+		}
+        .ksef-qr img {
+            width: 24mm;
+            height: 24mm;
+        }
+    </style>
+	<section class="ksef-qr">
+		<div class="image">
+			<a href={ templ.URL(qr) }>
+				@images.QR(qr)
+			</a>
+		</div>
+		<div class="text">
+			<div class="ksef-id">
+				if id != "" {
+					@t.T("regimes.pl.ksef-id", i18n.M{"id": id})
+				} else {
+					OFFLINE
+				}
+			</div>
+		</div>
+	</section>
+}
+
+func ksefQR(env *gobl.Envelope) string {
+	for _, stamp := range env.Head.Stamps {
+		switch stamp.Provider {
+		case favat.StampQR:
+			return stamp.Value
+		}
+	}
+	return ""
+}
+
+func ksefID(env *gobl.Envelope) string {
+	for _, stamp := range env.Head.Stamps {
+		switch stamp.Provider {
+		case favat.StampKSeFNumber:
+			return stamp.Value
+		}
+	}
+	return ""
+}

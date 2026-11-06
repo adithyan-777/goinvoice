@@ -1,0 +1,19 @@
+version: "2"
+output:
+  formats:
+    text:
+      path: stdout
+linters:
+  enable:
+    - errname
+    - goconst
+    - gocyclo
+    - nakedret
+    - revive
+    - unconvert
+    - unparam
+    - zerologlint
+formatters:
+  enable:
+    - gofmt
+    - goimports

@@ -1,0 +1,136 @@
+/* Base reset & typography */
+.app *,
+.app *::before,
+.app *::after { box-sizing: border-box; margin: 0; padding: 0;}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+html:has(.app),
+body:has(.app) {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-shell);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  font-weight: 400;
+  line-height: var(--text-body-sm-lh);
+  letter-spacing: var(--tracking-normal);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.standalone-page *,
+.standalone-page *::before,
+.standalone-page *::after {
+  box-sizing: border-box;
+}
+
+.standalone-page {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg-shell);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  line-height: var(--text-body-sm-lh);
+  letter-spacing: var(--tracking-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+.standalone-page input,
+.standalone-page textarea,
+.standalone-page select {
+  font: inherit;
+  color: inherit;
+}
+
+.app button:not(.btn):not(.btn-icon):not(.seg__btn):not(.sidebar-search):not(.x-select__trigger):not(.x-select__item):not([type="submit"]):not(.badge) {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.app a {
+  text-decoration: none;
+}
+
+.app a:not(.btn) {
+  color: inherit;
+}
+
+.app input,
+.app textarea,
+.app select {
+  font: inherit;
+  color: inherit;
+}
+
+/*
+  Text selection: the old fixed 12% ink overlay is invisible over the dark
+  canvas (#1B1B1B). Keep 12% ink in light theme; switch to brand
+  maroon in dark so light text stays readable on the highlight.
+*/
+::selection {
+  background: light-dark(
+    rgba(24, 24, 27, 0.12),
+    color-mix(in srgb, var(--accent) 65%, transparent)
+  );
+}
+
+/*
+  Native <select> popups normally take OS colors — the hovered/checked row
+  comes out black in dark themes. Paint options from the theme tokens so the
+  popup and its highlight stay readable in both modes.
+*/
+option {
+  background-color: var(--bg-elevated);
+  color: var(--text);
+}
+
+option:checked {
+  background-color: var(--accent);
+  color: var(--text-inverse);
+}
+
+.app :focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+[x-cloak] { display: none !important; }
+
+/* Browser extensions sometimes inject viewport-width junk (e.g. GiveFreely). */
+#give-freely-root,
+[id^="give-freely"] {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}

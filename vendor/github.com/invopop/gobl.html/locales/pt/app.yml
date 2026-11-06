@@ -1,0 +1,287 @@
+pt:
+  page: "Página %{page} de %{count}"
+
+  billing:
+    invoice: &invoice
+      title:
+        standard: "Fatura"
+        standard-simplified: "Fatura Simplificada"
+        proforma: "Fatura Proforma"
+        corrective: "Fatura Corretiva"
+        credit-note: "Nota de Crédito"
+        debit-note: "Nota de Débito"
+        other: "Documento"
+        paid: "Pago"
+        void: "Anulado"
+        self-billed: "Autofaturação"
+        untdid:
+          "325": "Fatura proforma"
+          "380": "Fatura"
+          "381": "Nota de crédito"
+          "383": "Nota de débito"
+          "384": "Fatura retificativa"
+          "326": "Fatura parcial"
+          "389": "Autofatura"
+          "261": "Nota de crédito autofaturada"
+          "386": "Fatura de adiantamento"
+          "393": "Fatura cedida (factoring)"
+          "396": "Nota de crédito cedida (factoring)"
+
+      summary: &summary
+        title: "Resumo"
+        issue_date: "Data de Emissão"
+        value_date: "Data do Facto Tributário"
+        taxable_event: "Facto tributário"
+        taxable_event_date: "Data do facto tributário"
+        tax_points:
+          issue: "Data de emissão"
+          delivery: "Data de entrega"
+          payment: "Data de pagamento"
+        operation_date: "Data de Operação"
+        currency: "Moeda"
+        currency_value: "%{desc} (%{code})"
+        preceding_document: "Referente a Fatura"
+        replaced_documents: "Documentos substituídos"
+        corrected_documents: "Documentos corrigidos"
+        order: "Encomenda"
+        order_period: "Período"
+        order_period_label: "%{label}"
+        order_period_range: "%{start} a %{end}"
+        contract: "Contrato"
+
+      supplier:
+        title: "Fornecedor"
+
+      customer:
+        title: "Cliente"
+
+      receiver:
+        title: "Endereço de entrega"
+        date: "Data de entrega: %{date}"
+        period: "Data de entrega: %{start} a %{end}"
+
+      lines: &lines
+        title: "Linhas"
+        i: "#"
+        ref: "Ref."
+        description: "Descrição"
+        quantity: "Qtd."
+        unit: "Unidade"
+        price: "Preço"
+        discount: "Desc."
+        charges: "Encargos"
+        total: "Total"
+        no_percent: "0,0%"
+        exemption: "Isenção"
+        on_behalf_of: "Em nome de"
+        period: "Período"
+        period_range: "%{start} a %{end}"
+
+      totals: &totals
+        sum: "Soma"
+        discount: "Desconto"
+        charge: "Encargo"
+        title: "Totais"
+        prices_include: "%{tax} incluído"
+        total: "Total"
+        taxes: "Imposto"
+        total_with_tax: "Total com imposto"
+        retained_tax: "Impostos retidos"
+        rounding: "Arredondamento"
+        total_to_pay: "Total a pagar"
+        advance: "Adiantamento"
+        due_sum: "Total em Dívida"
+        exchange_rate: "Câmbio para %{to} (%{amount})"
+        carried_fwd: "Valor a transportar"
+        brought_fwd: "Valor transportado"
+
+      taxes:
+        title: "Impostos"
+        category: "Imposto"
+        base: "Incidência"
+        rate: "Taxa"
+        amount: "Valor"
+        exemption: "Isenção"
+        no_percent: "0,0%"
+
+      payment: &payment
+        title: "Pagamento"
+        instructions: &payment_instructions
+          method: "Método de pagamento"
+          ref: "Referência"
+          ref_line: "Referência: %{ref}"
+          amount: "Valor"
+          description: "Descrição"
+          bank_data: "Instruções de transferência bancária"
+          card: "Pagamento com Cartão"
+          card_detail: "Pagamento efetuado com cartão terminando em %{last4} pertencente a %{holder}"
+          direct_debit: "Débito direto"
+          mandate_ref: "Mandato: %{ref}"
+          creditor: "ID do credor: %{creditor}"
+          observations: "Notas de Pagamento"
+          bank_name: "Banco: %{name}"
+          iban: "IBAN: %{iban}"
+          account_number: "Número da conta: %{num}"
+          clearing: "Código de compensação: %{code}"
+          bic: "BIC: %{bic}"
+          online: "Link de pagamento"
+          methods:
+            card: "Cartão bancário"
+            card+credit: "Cartão de crédito"
+            card+debit: "Cartão de débito"
+            credit-transfer: "Transferência bancária"
+            debit-transfer: "Transferência de débito"
+            cash: "Dinheiro"
+            direct-debit: "Débito direto"
+            online: "Online"
+        terms:
+          key: "Condições de Pagamento"
+          notes: "Notas das Condições de Pagamento"
+          due_dates: 
+            one: "Data de vencimento"
+            many: "Datas de vencimento"
+          keys:
+            na: "Não especificado"
+            end_of_month: "Fim do mês"
+            due_date: "Na data de vencimento"
+            deferred: "Após a data de vencimento"
+            proximo: "Próximo mês"
+            instant: "Na entrega da fatura"
+            elective: "Escolhido pelo cliente"
+            pending: "A determinar pelo fornecedor"
+            advanced: "Pago"
+            delivery: "Na entrega"
+
+      notes:
+        title: "Notas"
+
+    payment:
+      <<: *invoice
+      title:
+        request: "Pedido de Pagamento"
+        advice: "Aviso de Pagamento"
+        receipt: "Recibo de Pagamento"
+        paid: "Pago"
+        void: "Anulado"
+
+      lines:
+        <<: *lines
+        document: "Documento"
+
+      methods:
+        title: "Métodos"
+        date: "Data"
+        amount: "Valor"
+        total: "Total pago"
+        instructions: *payment_instructions
+
+    delivery:
+      <<: *invoice
+      title:
+        advice: "Aviso de Entrega"
+        note: "Guia de Remessa"
+        waybill: "Guia de Transporte"
+        receipt: "Recibo de Entrega"
+
+      summary:
+        <<: *summary
+        despatch_date: "Data de Expedição"
+        receive_date: "Data de Recepção"
+        preceding_document: "Documento Anterior"
+
+      despatcher:
+        title: "Remetente"
+
+      receiver:
+        title: "Destinatário"
+
+      courier:
+        title: "Transportador"
+
+      tracking:
+        title: "Informações de Rastreamento"
+        code: "Código de Rastreamento"
+        website: "Link de Rastreamento"
+
+    order:
+      <<: *invoice
+      title:
+        purchase: "Ordem de Compra"
+        sale: "Ordem de Venda"
+        quote: "Orçamento"
+
+      summary:
+        <<: *summary
+        preceding_document: "Documento Anterior"
+        contract: "Contrato"
+        period: "Período"
+
+      buyer:
+        title: "Comprador"
+
+      seller:
+        title: "Vendedor"
+
+  org:
+    party:
+      tax_id: "%{label}: (%{country}) %{code}"
+      tax_id_no_country: "%{label}: %{code}"
+      tel: "Tel: %{num}"
+      tel_label: "Tel: %{num} (%{label})"
+      email:
+        one: "Email: %{addr}"
+        other: "Emails: %{addr}"
+      email_label: "%{addr} (%{label})"
+      identity: "%{label}: %{code}"
+      identity_code: "Código de Identidade"
+      identity_labels:
+        passport: "Passaporte"
+      po_box: "Caixa Postal %{po_box}"
+      labels:
+        default: "Código Fiscal"
+      ext: "%{label}: %{value}"
+      reg:
+        capital: "Capital Social: %{amount}"
+        registration: "Registada:"
+        book: "Livro %{id}"
+        volume: "Volume %{id}"
+        sheet: "Folha %{id}"
+        section: "Seção %{id}"
+        page: "Página %{id}"
+        entry: "Entrada %{id}"
+
+    address:
+      label: "%{label}:"
+      country: "(%{country})"
+
+  regimes:
+    pt:
+      at:
+        doc_code: "Código AT"
+      title:
+        FT: "Fatura"
+        FS: "Fatura Simplificada"
+        FR: "Fatura-Recibo"
+        ND: "Nota de Débito"
+        NC: "Nota de Crédito"
+        RC: "Recibo de Caixa"
+        RG: "Recibo"
+        CM: "Consulta de Mesa"
+        CC: "Crédito de Consignação"
+        FC: "Fatura de Consignação"
+        FO: "Folha de Obra"
+        NE: "Nota de Encomenda"
+        OU: "Outro Documento"
+        OR: "Orçamento"
+        PF: "Fatura Pró-forma"
+        DC: "Documento de Entrega"
+        GR: "Guia de Remessa"
+        GT: "Guia de Transporte"
+        GA: "Guia de movimentação de ativos fixos próprios"
+        GC: "Guia de Consignação"
+        GD: "Guia de Devolução"
+        RP: "Recibo de prémio"
+        RE: "Recibo de estorno"
+        CS: "Imputação a co-seguradora"
+        LD: "Imputação a co-seguradora líder"
+        RA: "Resseguro aceite"

@@ -1,0 +1,257 @@
+// Package goblhtml provides a simple way to render HTML documents from GOBL envelopes.
+//
+//go:generate go run ./cmd/gobl.html generate-index
+package goblhtml
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl"
+	_ "github.com/invopop/gobl.dev/bundle" // registers the GOBL-approved addon set
+	"github.com/invopop/gobl.html/components"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl.html/layout"
+	srclocales "github.com/invopop/gobl.html/locales"
+	"github.com/invopop/gobl/bill"
+	"github.com/invopop/gobl/l10n"
+	"github.com/invopop/gobl/num"
+	"github.com/invopop/gobl/org"
+)
+
+const (
+	defaultLocale i18n.Code = "en"
+)
+
+// locales contains the database of locales defined for this package.
+var locales *i18n.Locales
+
+func init() {
+	// Locales are loaded into a global variable for this package so that
+	// users can continue to use their own locales outside of this one.
+	locales = new(i18n.Locales)
+	if err := locales.LoadWithDefault(srclocales.Content, defaultLocale); err != nil {
+		panic(fmt.Errorf("loading locales: %w", err))
+	}
+}
+
+// Option defines a configuration option to use for rendering.
+type Option func(*internal.Opts)
+
+// WithLogo overrides whatever logo was defined in the original envelope,
+// if at all, using the provided logo according to the document type.
+func WithLogo(logo *org.Image) Option {
+	return func(o *internal.Opts) {
+		o.Logo = logo
+	}
+}
+
+// WithNotes adds the provided string to the envelope notes.
+func WithNotes(txt string) Option {
+	return func(o *internal.Opts) {
+		o.Notes = txt
+	}
+}
+
+// WithLocale sets the locale to use for rendering.
+func WithLocale(locale i18n.Code) Option {
+	return func(o *internal.Opts) {
+		o.Locale = locale
+	}
+}
+
+// WithCalFormatter prepares simple date and time formatting. The date and
+// time formats are configured independently; date-time values render as
+// "<date><sep><time>" using the provided formats. Pass an empty string to
+// keep the ISO default for a given field.
+func WithCalFormatter(date, timeFormat string, loc *time.Location) Option {
+	return func(o *internal.Opts) {
+		cf := internal.CalFormatterISO
+		if date != "" {
+			cf.Date = date
+		}
+		if timeFormat != "" {
+			cf.Time = timeFormat
+		}
+		if loc != nil {
+			cf.Location = loc
+		}
+		o.CalFormatter = &cf
+	}
+}
+
+// WithNumFormatter defines a customer number formatter to use instead of
+// that provided by default for the currency.
+func WithNumFormatter(nf num.Formatter) Option {
+	return func(o *internal.Opts) {
+		o.NumFormatter = &nf
+	}
+}
+
+// WithCurrencyTemplate sets a custom template for determining the position of
+// currency units in the formatted amounts. This will modify the currency's default
+// formatter.
+func WithCurrencyTemplate(val string) Option {
+	return func(o *internal.Opts) {
+		o.CurrencyTemplate = val
+	}
+}
+
+// WithThousandsSeparator sets a custom thousands separator for formatting
+// currency amounts. This will modify the currency's default formatter.
+func WithThousandsSeparator(val string) Option {
+	return func(o *internal.Opts) {
+		o.ThousandsSeparator = val
+	}
+}
+
+// WithDecimalMark sets a custom decimal mark for formatting currency amounts.
+// This will modify the currency's default formatter.
+func WithDecimalMark(val string) Option {
+	return func(o *internal.Opts) {
+		o.DecimalMark = val
+	}
+}
+
+// WithNegativeTemplate sets a custom negative template for formatting
+// currency amounts. This will modify the currency's default formatter.
+func WithNegativeTemplate(val string) Option {
+	return func(o *internal.Opts) {
+		o.NegativeTemplate = val
+	}
+}
+
+// WithEmbeddedAssets indicates that the stylesheets and scripts should be
+// embedded inside the HTML document as opposed to links.
+func WithEmbeddedAssets() Option {
+	return func(o *internal.Opts) {
+		o.EmbedAssets = true
+	}
+}
+
+// WithLayout indicates that the document should be rendered
+// acording to the given Layout.
+func WithLayout(l layout.Code) Option {
+	return func(o *internal.Opts) {
+		o.Layout = l
+	}
+}
+
+// WithVoid indicates that the document is marked as void
+// and should be rendered accordingly.
+func WithVoid(void bool) Option {
+	return func(o *internal.Opts) {
+		o.Void = void
+	}
+}
+
+// WithSandbox indicates that the document should be rendered in sandbox mode
+func WithSandbox(sandbox bool) Option {
+	return func(o *internal.Opts) {
+		o.Sandbox = sandbox
+	}
+}
+
+// WithWatermark indicates that the document should be rendered with the provided watermark
+func WithWatermark(watermark string) Option {
+	return func(o *internal.Opts) {
+		o.Watermark = watermark
+	}
+}
+
+// WithLabel indicates that the document should be rendered with the provided label
+func WithLabel(label string) Option {
+	return func(o *internal.Opts) {
+		o.Label = label
+	}
+}
+
+// EnableAdjustmentMode indicates that invoice types credit-note and debit-note
+// or similar should be rendered as adjustments to the original invoice, as
+// required in certain jurisdictions. By default, this mode is disabled.
+var EnableAdjustmentMode = func(o *internal.Opts) {
+	o.AdjustmentMode = true
+}
+
+// Render takes the GOBL envelope and attempts to render an HTML document
+// from it.
+func Render(ctx context.Context, env *gobl.Envelope, opts ...Option) ([]byte, error) {
+	o := new(internal.Opts)
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	// Prepare the Locale
+	if o.Locale == "" {
+		o.Locale = defaultLocale
+	}
+	l := locales.Match(string(o.Locale))
+	if l == nil {
+		l = locales.Get(defaultLocale)
+	}
+	ctx = l.WithContext(ctx)
+
+	// Extract the currency to use for formatting
+	var nf num.Formatter
+	if o.NumFormatter != nil {
+		nf = *o.NumFormatter
+	} else {
+		if d := internal.ExtractDocumentFrom(env); d != nil {
+			nf = d.GetCurrency().Def().Formatter()
+
+			if d.GetRegime().Country.Code() == l10n.PT {
+				// As required by the Portuguese tax law
+				nf.ThousandsSeparator = " "
+				nf.DecimalMark = ","
+				nf.Template = "%n %u"
+			}
+		}
+	}
+	if o.CurrencyTemplate != "" {
+		nf.Template = o.CurrencyTemplate
+	}
+	if o.ThousandsSeparator != "" {
+		nf.ThousandsSeparator = o.ThousandsSeparator
+	}
+	if o.DecimalMark != "" {
+		nf.DecimalMark = o.DecimalMark
+	}
+	if o.NegativeTemplate != "" {
+		nf.NegativeTemplate = o.NegativeTemplate
+	}
+	o.NumFormatter = &nf
+
+	if o.CalFormatter == nil {
+		o.CalFormatter = &internal.CalFormatterISO
+	}
+
+	ctx = internal.WithOptions(ctx, o)
+
+	// Make the document available to components that only receive a part of
+	// it, such as the party details.
+	if d := internal.ExtractDocumentFrom(env); d != nil {
+		ctx = internal.WithDocument(ctx, d)
+	}
+
+	if o.AdjustmentMode {
+		switch doc := env.Extract().(type) {
+		case *bill.Invoice:
+			if doc.Type.In(bill.InvoiceTypeCreditNote) {
+				if err := doc.Invert(); err != nil {
+					return nil, fmt.Errorf("inverting invoice for adjustment mode: %w", err)
+				}
+			}
+		}
+	}
+
+	out := components.Envelope(env)
+	buf := new(bytes.Buffer)
+	if err := out.Render(ctx, buf); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}

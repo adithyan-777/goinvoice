@@ -1,0 +1,119 @@
+package co
+
+import (
+	"github.com/invopop/gobl"
+	"github.com/invopop/gobl.html/components/assets"
+	"github.com/invopop/gobl.html/components/images"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl.co.dian/addon"
+	"github.com/invopop/gobl/bill"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/head"
+	"regexp"
+)
+
+var dianQRHTTPRegexp = regexp.MustCompile(`https.+`)
+
+// TitleType renders the Colombian document title (e.g. "Factura Electrónica de
+// Venta") for documents issued under the Colombian regime, falling through to
+// the default title when no Colombia-specific title applies.
+templ TitleType(doc internal.Document) {
+	if isColombian(doc) {
+		@titleType(doc)
+	}
+}
+
+templ titleType(doc internal.Document) {
+	if key := titleKey(doc); key != "" {
+		@t.T("regimes.co.title." + key)
+	}
+}
+
+templ Stylesheets(env *gobl.Envelope) {
+	if stampValue(env.Head.Stamps, dian.StampCUDE) != "" {
+		@assets.Stylesheet("co.css")
+	}
+}
+
+templ DIANQR(env *gobl.Envelope) {
+	if cude := stampValue(env.Head.Stamps, dian.StampCUDE); cude != "" {
+		if qr := stampValue(env.Head.Stamps, dian.StampQR); qr != "" {
+			@generateQR(env, cude, dianPrecedingCUDE(env), qr)
+		}
+	}
+}
+
+// Stamps carrying the DIAN software provider details, set by the app that
+// issued the document.
+const (
+	stampDIANProvider    cbc.Key = "dian-provider"
+	stampDIANProviderNIT cbc.Key = "dian-provider-nit"
+	stampDIANSoftware    cbc.Key = "dian-software"
+)
+
+templ generateQR(env *gobl.Envelope, code, precedingCode, qr string) {
+	<section class="dian-qr">
+		<div class="image">
+			<a href={ templ.URL(dianURL(qr)) }>
+				@images.QR(qr)
+			</a>
+		</div>
+		// The DIAN QR block always renders in Spanish: it is a legal
+		// requirement, so the labels are not translated.
+		<div class="text">
+			<div class="provider">
+				<div class="row">
+					<span class="label">Proveedor:</span>
+					<span class="value">{ stampValue(env.Head.Stamps, stampDIANProvider) }</span>
+				</div>
+				<div class="row">
+					<span class="label">NIT:</span>
+					<span class="value">{ stampValue(env.Head.Stamps, stampDIANProviderNIT) }</span>
+				</div>
+				<div class="row">
+					<span class="label">Software:</span>
+					<span class="value">{ stampValue(env.Head.Stamps, stampDIANSoftware) }</span>
+				</div>
+			</div>
+			<div class="codes">
+				if precedingCode != "" {
+					<div class="row">
+						<span class="label">CUDE:</span>
+						<span class="value">{ code }</span>
+					</div>
+					<div class="row">
+						<span class="label">CUFE ant:</span>
+						<span class="value">{ precedingCode }</span>
+					</div>
+				} else {
+					<div class="row">
+						<span class="label">CUFE:</span>
+						<span class="value">{ code }</span>
+					</div>
+				}
+			</div>
+		</div>
+	</section>
+}
+
+func dianURL(qr string) string {
+	return dianQRHTTPRegexp.FindString(qr)
+}
+
+func dianPrecedingCUDE(env *gobl.Envelope) string {
+	inv, ok := env.Extract().(*bill.Invoice)
+	if !ok || len(inv.Preceding) == 0 {
+		return ""
+	}
+	return stampValue(inv.Preceding[0].Stamps, dian.StampCUDE)
+}
+
+// stampValue returns the value of the stamp with the given provider, or empty
+// when absent.
+func stampValue(stamps []*head.Stamp, key cbc.Key) string {
+	if st := head.GetStamp(stamps, key); st != nil {
+		return st.Value
+	}
+	return ""
+}

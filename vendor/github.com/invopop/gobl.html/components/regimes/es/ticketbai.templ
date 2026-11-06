@@ -1,0 +1,81 @@
+package es
+
+import (
+	"github.com/invopop/gobl"
+	"github.com/invopop/gobl.html/components/images"
+	"github.com/invopop/gobl/addons/es/tbai"
+)
+
+// TicketBAIQR generates a QR code area for the TicketBAI code in the given envelope.
+templ TicketBAIQR(env *gobl.Envelope) {
+	if code := ticketbaiCode(env); code != "" {
+		if qr := ticketbaiQR(env); qr != "" {
+			@generateTicketBAIQR(code, qr)
+		}
+	}
+}
+
+// HasTicketBAIQR returns a boolean indicating whether the envelope has a TicketBAI QR or not.
+func HasTicketBAIQR(env *gobl.Envelope) bool {
+	if code := ticketbaiCode(env); code != "" {
+		if qr := ticketbaiQR(env); qr != "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+templ generateTicketBAIQR(code, qr string) {
+	<style type="text/css">
+		.ticketbai {
+			break-inside: avoid;
+			text-align: center;
+			padding: 3mm;
+			border: 1px solid #E5E7EB;
+			width: 6cm;
+		}
+		.ticketbai .label {
+			font-family: "Geist Mono", monospace;
+			font-size: 7pt;
+			text-align: center; 
+			margin-bottom: 2mm;
+		}
+		.ticketbai img {
+			width: 25mm;
+			height: 25mm;
+		}
+	</style>
+	<section class="qr">
+		<div class="ticketbai">
+			<div class="label">
+				{ code }
+			</div>
+			<div class="qr">
+				<a href={ templ.URL(qr) }>
+					@images.QR(qr)
+				</a>
+			</div>
+		</div>
+	</section>
+}
+
+func ticketbaiCode(env *gobl.Envelope) string {
+	for _, stamp := range env.Head.Stamps {
+		switch stamp.Provider {
+		case tbai.StampCode:
+			return stamp.Value
+		}
+	}
+	return ""
+}
+
+func ticketbaiQR(env *gobl.Envelope) string {
+	for _, stamp := range env.Head.Stamps {
+		switch stamp.Provider {
+		case tbai.StampQR:
+			return stamp.Value
+		}
+	}
+	return ""
+}

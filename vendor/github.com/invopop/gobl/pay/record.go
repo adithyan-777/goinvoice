@@ -1,0 +1,115 @@
+package pay
+
+import (
+	"encoding/json"
+
+	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/num"
+	"github.com/invopop/gobl/rules"
+	"github.com/invopop/gobl/rules/is"
+	"github.com/invopop/gobl/tax"
+	"github.com/invopop/gobl/uuid"
+	"github.com/invopop/jsonschema"
+)
+
+// Record represents an individual payment transaction made via a specific
+// means (cash, card, credit-transfer, etc.), with its own amount and optional
+// currency. A Record is usually nested within another structure
+// such as invoice advances or payments.
+type Record struct {
+	uuid.Identify
+	// When the payment was made.
+	Date *cal.Date `json:"date,omitempty" jsonschema:"title=Date"`
+	// The payment means used.
+	Key cbc.Key `json:"key,omitempty" jsonschema:"title=Key"`
+	// Reason the amount was waived and not collected from the customer,
+	// as an alternative to the payment means key.
+	Waiver cbc.Key `json:"waiver,omitempty" jsonschema:"title=Waiver"`
+	// ID or reference for the payment.
+	Ref cbc.Code `json:"ref,omitempty" jsonschema:"title=Reference"`
+	// Description about the payment.
+	Description string `json:"description,omitempty" jsonschema:"title=Description"`
+	// Percentage of the total amount payable that was paid. Note that
+	// multiple records with percentages may lead to rounding errors,
+	// especially when the total sums to 100%. We recommend only including one
+	// record with a percent value per document.
+	Percent *num.Percentage `json:"percent,omitempty" jsonschema:"title=Percent"`
+	// Tax rate totals whose sum is used as the amount, as an alternative to
+	// the percent.
+	Taxes []*tax.Filter `json:"taxes,omitempty" jsonschema:"title=Taxes"`
+	// How much was paid.
+	Amount num.Amount `json:"amount" jsonschema:"title=Amount"`
+	// If different from the parent document's base currency.
+	Currency currency.Code `json:"currency,omitempty" jsonschema:"title=Currency"`
+	// Details of the payment that was made via a credit or debit card.
+	Card *Card `json:"card,omitempty" jsonschema:"title=Card"`
+	// Details about how the payment was made by credit (bank) transfer.
+	CreditTransfer *CreditTransfer `json:"credit_transfer,omitempty" jsonschema:"title=Credit Transfer"`
+	// Details of the payment that was made via direct debit.
+	DirectDebit *DirectDebit `json:"direct_debit,omitempty" jsonschema:"title=Direct Debit"`
+	// Details of the payment that was made via an online provider.
+	Online []*Online `json:"online,omitempty" jsonschema:"title=Online"`
+	// Tax extensions required by tax regimes or addons.
+	Ext tax.Extensions `json:"ext,omitzero" jsonschema:"title=Extensions"`
+	// Additional details useful for the parties involved.
+	Meta cbc.Meta `json:"meta,omitempty" jsonschema:"title=Meta"`
+}
+
+func recordRules() *rules.Set {
+	return rules.For(new(Record),
+		rules.Field("key",
+			rules.AssertIfPresent("01", "key must be valid", HasValidMeansKey),
+		),
+		rules.When(is.Expr(`string(Waiver) != ""`),
+			rules.Field("key",
+				rules.Assert("03", "key must be blank with waiver", is.Empty),
+			),
+		),
+		rules.When(is.Expr("Percent != nil"),
+			rules.Field("taxes",
+				rules.Assert("02", "taxes must be blank with percent", is.Empty),
+			),
+		),
+	)
+}
+
+// CalculateFrom will update the amount using the rate of the provided
+// total, if defined.
+func (r *Record) CalculateFrom(payable num.Amount) {
+	if r != nil && r.Percent != nil {
+		r.Amount = r.Percent.Of(payable)
+	}
+}
+
+// CalculateFromTaxes will update the amount using the sum of the tax
+// rate totals that match the record's tax filters, if defined.
+func (r *Record) CalculateFromTaxes(zero num.Amount, t *tax.Total) {
+	if r != nil && len(r.Taxes) > 0 {
+		r.Amount = t.FilteredAmount(zero, r.Taxes)
+	}
+}
+
+// UnmarshalJSON helps migrate the desc field to description.
+func (r *Record) UnmarshalJSON(data []byte) error {
+	type Alias Record
+	aux := struct {
+		Desc string `json:"desc,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(r),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	if aux.Desc != "" {
+		r.Description = aux.Desc
+	}
+	return nil
+}
+
+// JSONSchemaExtend extends the JSONSchema for the Record type.
+func (Record) JSONSchemaExtend(schema *jsonschema.Schema) {
+	extendJSONSchemaWithMeansKey(schema, "key")
+}

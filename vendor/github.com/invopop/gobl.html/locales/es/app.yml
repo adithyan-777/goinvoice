@@ -1,0 +1,390 @@
+es:
+  page: "Página %{page} de %{count}"
+
+  billing:
+    invoice: &invoice
+      title:
+        standard: "Factura"
+        standard-simplified: "Factura simplificada"
+        proforma: "Factura proforma"
+        corrective: "Factura rectificativa"
+        credit-note: "Nota de crédito"
+        debit-note: "Nota de débito"
+        adjustment: "Factura rectificativa"
+        other: "Documento"
+        paid: "Pagado"
+        void: "Anulado"
+        self-billed: "Autofacturación"
+        untdid:
+          "325": "Factura proforma"
+          "380": "Factura"
+          "381": "Factura rectificativa"
+          "383": "Nota de débito"
+          "384": "Factura correctiva"
+          "326": "Factura parcial"
+          "389": "Factura autofacturada"
+          "261": "Factura rectificativa autofacturada"
+          "386": "Factura de anticipo"
+          "393": "Factura cedida (factoring)"
+          "396": "Factura rectificativa cedida (factoring)"
+
+      summary: &summary
+        title: "Resumen"
+        issue_date: "Fecha de emisión"
+        value_date: "Fecha de valor"
+        taxable_event: "Hecho imponible"
+        taxable_event_date: "Fecha del hecho imponible"
+        tax_points:
+          issue: "Fecha de emisión"
+          delivery: "Fecha de entrega"
+          payment: "Fecha de pago"
+        operation_date: "Fecha de operación"
+        currency: "Moneda"
+        currency_value: "%{desc} (%{code})"
+        preceding_document: "Documentos anteriores"
+        replaced_documents: "Documentos sustituidos"
+        corrected_documents: "Documentos rectificados"
+        order: "Orden"
+        order_period: "Periodo"
+        order_period_label: "%{label}"
+        order_period_range: "%{start} a %{end}"
+        contract: "Contrato"
+        ext_map:
+          mx-cfdi-issue-place: "Lugar de expedición"
+          mx-cfdi-payment-method: "Método de pago"
+
+      supplier:
+        title: "Proveedor"
+
+      customer:
+        title: "Cliente"
+
+      receiver:
+        title: "Dirección de entrega"
+        date: "Fecha de entrega: %{date}"
+        period: "Fecha de entrega: %{start} a %{end}"
+
+      lines: &lines
+        title: "Líneas"
+        i: "#"
+        ref: "Ref."
+        description: "Descripción"
+        quantity: "Cant."
+        unit: "Unidad"
+        price: "Precio"
+        discount: "Desc."
+        charges: "Cargos"
+        total: "Total"
+        no_percent: "—"
+        exemption: "Exención"
+        on_behalf_of: "A nombre de"
+        period: "Periodo"
+        period_range: "%{start} a %{end}"
+
+      totals: &totals
+        sum: "Suma"
+        discount: "Descuento"
+        charge: "Cargo"
+        title: "Totales"
+        prices_include: "%{tax} incluido"
+        total: "Total"
+        taxes: "Impuesto"
+        total_with_tax: "Total con impuestos"
+        retained_tax: "Impuestos retenidos"
+        rounding: "Redondeo"
+        total_to_pay: "Total a pagar"
+        advance: "Anticipo"
+        due_sum: "Total adeudado"
+        exchange_rate: "Cambio a %{to} (%{amount})"
+        carried_fwd: "A transportar"
+        brought_fwd: "Saldo transportado"
+
+      taxes:
+        title: "Impuestos"
+        category: "Impuesto"
+        base: "Base imp."
+        rate: "Tasa"
+        amount: "Monto"
+        exemption: "Exención"
+        no_percent: "—"
+
+      payment: &payment
+        title: "Pago"
+        instructions: &payment_instructions
+          method: "Método de pago"
+          ref: "Referencia"
+          ref_line: "Referencia: %{ref}"
+          amount: "Importe"
+          description: "Descripción"
+          bank_data: "Instrucciones de transferencia bancaria"
+          card: "Pago con tarjeta"
+          card_detail: "Pago realizado con tarjeta terminada en %{last4} perteneciente a %{holder}"
+          direct_debit: "Domiciliación bancaria"
+          mandate_ref: "Mandato: %{ref}"
+          creditor: "ID del acreedor: %{creditor}"
+          observations: "Notas de pago"
+          bank_name: "Banco: %{name}"
+          iban: "IBAN: %{iban}"
+          account_number: "Número de cuenta: %{num}"
+          clearing: "Código de compensación: %{code}"
+          bic: "BIC: %{bic}"
+          online: "Link de pago"
+          methods:
+            card: "Tarjeta bancaria"
+            card+credit: "Tarjeta de crédito"
+            card+debit: "Tarjeta de débito"
+            credit-transfer: "Transferencia bancaria"
+            debit-transfer: "Transferencia de débito"
+            cash: "Efectivo"
+            direct-debit: "Domiciliación bancaria"
+            online: "En línea"
+            cheque: "Cheque"
+        terms:
+          key: "Términos de pago"
+          notes: "Notas de términos de pago"
+          due_dates: 
+            one: "Fecha de vencimiento"
+            many: "Fechas de vencimiento"
+          keys:
+            na: "No especificado"
+            end_of_month: "Fin de mes"
+            due_date: "En fecha de vencimiento"
+            deferred: "Después de la fecha de vencimiento"
+            proximo: "Próximo mes"
+            instant: "En la entrega de la factura"
+            elective: "Elegido por el cliente"
+            pending: "A determinar por el proveedor"
+            advanced: "Pagado"
+            delivery: "En la entrega"
+
+      notes:
+        title: "Notas"
+
+    payment:
+      <<: *invoice
+      title:
+        request: "Solicitud de pago"
+        advice: "Aviso de pago"
+        receipt: "Recibo de pago"
+        paid: "Pagado"
+        void: "Anulado"
+
+      lines:
+        <<: *lines
+        document: "Documento"
+
+      methods:
+        title: "Métodos"
+        date: "Fecha"
+        amount: "Importe"
+        total: "Total pagado"
+        instructions: *payment_instructions
+
+    delivery:
+      <<: *invoice
+      title:
+        advice: "Aviso de entrega"
+        note: "Albarán de entrega"
+        waybill: "Carta de porte"
+        receipt: "Recibo de entrega"
+
+      summary:
+        <<: *summary
+        despatch_date: "Fecha de envío"
+        receive_date: "Fecha de recepción"
+        preceding_document: "Documento anterior"
+
+      despatcher:
+        title: "Remitente"
+
+      receiver:
+        title: "Destinatario"
+
+      courier:
+        title: "Transportista"
+
+      tracking:
+        title: "Información de seguimiento"
+        code: "Código de seguimiento"
+        website: "Enlace de seguimiento"
+
+    order:
+      <<: *invoice
+      title:
+        purchase: "Orden de compra"
+        sale: "Orden de venta"
+        quote: "Presupuesto"
+
+      summary:
+        <<: *summary
+        preceding_document: "Documento anterior"
+        contract: "Contrato"
+        period: "Periodo"
+
+      buyer:
+        title: "Comprador"
+
+      seller:
+        title: "Vendedor"
+
+  org:
+    party:
+      tax_id: "%{label}: (%{country}) %{code}"
+      tax_id_no_country: "%{label}: %{code}"
+      tel: "Tel: %{num}"
+      tel_label: "Tel: %{num} (%{label})"
+      email:
+        one: "Email: %{addr}"
+        other: "Emails: %{addr}"
+      email_label: "%{addr} (%{label})"
+      identity: "%{label}: %{code}"
+      identity_code: "Código de identidad"
+      identity_labels:
+        passport: "Pasaporte"
+      po_box: "Apartado postal %{po_box}"
+      labels:
+        default: "Código fiscal"
+      ext: "%{label}: %{value}"
+      ext_map:
+        co-dian-municipality: "Municipio"
+      reg:
+        capital: "Capital social: %{amount}"
+        registration: "Registro:"
+        book: "Libro %{id}"
+        volume: "Volumen %{id}"
+        sheet: "Hoja %{id}"
+        section: "Sección %{id}"
+        page: "Página %{id}"
+        entry: "Entrada %{id}"
+    address:
+      label: "%{label}:"
+      country: "(%{country})"
+
+  regimes:
+    ar:
+      title:
+        "1": "Factura A"
+        "2": "Nota de Débito A"
+        "3": "Nota de Crédito A"
+        "4": "Recibo A"
+        "5": "Nota de Venta al Contado A"
+        "6": "Factura B"
+        "7": "Nota de Débito B"
+        "8": "Nota de Crédito B"
+        "9": "Recibo B"
+        "10": "Nota de Venta al Contado B"
+        "11": "Factura C"
+        "12": "Nota de Débito C"
+        "13": "Nota de Crédito C"
+        "15": "Recibo C"
+        "16": "Nota de Venta al Contado C"
+        "17": "Liquidación de Servicios Públicos Clase A"
+        "18": "Liquidación de Servicios Públicos Clase B"
+        "19": "Factura de Exportación"
+        "20": "Nota de Débito por Operaciones con el Exterior"
+        "21": "Nota de Crédito por Operaciones con el Exterior"
+        "22": "Factura - Permiso Exportación Simplificado - Dto. 855/97"
+        "23": "Comprobante A de Compra Primaria para el Sector Pesquero Marítimo"
+        "24": "Comprobante A de Consignación Primaria para el Sector Pesquero Marítimo"
+        "25": "Comprobante B de Compra Primaria para el Sector Pesquero Marítimo"
+        "26": "Comprobante B de Consignación Primaria para el Sector Pesquero Marítimo"
+        "27": "Liquidación Única Comercial Impositiva Clase A"
+        "28": "Liquidación Única Comercial Impositiva Clase B"
+        "29": "Liquidación Única Comercial Impositiva Clase C"
+        "30": "Comprobante de Compra de Bienes Usados"
+        "32": "Comprobante para Reciclar Materiales"
+        "33": "Liquidación Primaria de Granos"
+        "34": "Comprobante A del Apartado A Inciso F R.G. N° 1415"
+        "35": "Comprobante B del Anexo I, Apartado A, Inc. F), R.G. N° 1415"
+        "36": "Comprobante C del Anexo I, Apartado A, Inc. F), R.G. N° 1415"
+        "37": "Nota de Débito o Documento Equivalente que Cumpla con la R.G. N° 1415"
+        "38": "Nota de Crédito o Documento Equivalente que Cumpla con la R.G. N° 1415"
+        "39": "Otro Comprobante A que Cumpla con la R.G. N° 1415"
+        "40": "Otro Comprobante B que Cumpla con la R.G. N° 1415"
+        "41": "Otro Comprobante C que Cumpla con la R.G. N° 1415"
+        "43": "Nota de Crédito Liquidación Única Comercial Impositiva Clase B"
+        "44": "Nota de Crédito Liquidación Única Comercial Impositiva Clase C"
+        "45": "Nota de Débito Liquidación Única Comercial Impositiva Clase A"
+        "46": "Nota de Débito Liquidación Única Comercial Impositiva Clase B"
+        "47": "Nota de Débito Liquidación Única Comercial Impositiva Clase C"
+        "48": "Nota de Crédito Liquidación Única Comercial Impositiva Clase A"
+        "49": "Comprobante de Compra de Bienes No Registrables a Consumidores Finales"
+        "50": "Recibo Factura A Régimen de Factura de Crédito"
+        "51": "Factura M"
+        "52": "Nota de Débito M"
+        "53": "Nota de Crédito M"
+        "54": "Recibo M"
+        "55": "Nota de Venta al Contado M"
+        "56": "Comprobante M del Anexo I Apartado A Inc. F R.G. N° 1415"
+        "57": "Otro Comprobante M que Cumpla con la R.G. N° 1415"
+        "58": "Cuenta de Venta y Líquido Producto M"
+        "59": "Liquidación M"
+        "60": "Cuenta de Venta y Líquido Producto A"
+        "61": "Cuenta de Venta y Líquido Producto B"
+        "63": "Liquidación A"
+        "64": "Liquidación B"
+        "66": "Despacho de Importación"
+        "68": "Liquidación C"
+        "70": "Recibo Factura de Crédito"
+        "81": "Tique Factura A - Controlador Fiscal"
+        "82": "Tique Factura B"
+        "83": "Tique"
+        "90": "Nota de Crédito - Otro Comp. que No Cumpla con la R.G. N° 1415 y sus Modif."
+        "99": "Otro Comp. que No Cumpla con la R.G. N° 1415 y sus Modif."
+        "109": "Tique C"
+        "110": "Tique Nota de Crédito"
+        "111": "Tique Factura C"
+        "112": "Tique Nota de Crédito A"
+        "113": "Tique Nota de Crédito B"
+        "114": "Tique Nota de Crédito C"
+        "115": "Tique Nota de Débito A"
+        "116": "Tique Nota de Débito B"
+        "117": "Tique Nota de Débito C"
+        "118": "Tique Factura M"
+        "119": "Tique Nota de Crédito M"
+        "120": "Tique Nota de Débito M"
+        "150": "Liquidación de Compra Primaria para el Sector Tabacalero A"
+        "151": "Liquidación de Compra Primaria para el Sector Tabacalero B"
+        "157": "Cuenta de Venta y Líquido Producto A – Sector Avícola"
+        "158": "Cuenta de Venta y Líquido Producto B – Sector Avícola"
+        "159": "Liquidación de Compra A – Sector Avícola"
+        "160": "Liquidación de Compra B – Sector Avícola"
+        "161": "Liquidación de Compra Directa A - Sector Avícola"
+        "162": "Liquidación de Compra Directa B - Sector Avícola"
+        "163": "Liquidación de Compra Directa C - Sector Avícola"
+        "164": "Liquidación de Venta Directa A - Sector Avícola"
+        "165": "Liquidación de Venta Directa B - Sector Avícola"
+        "166": "Liquidación de Contratación de Crianza Pollos Parrilleros A"
+        "167": "Liquidación de Contratación de Crianza Pollos Parrilleros B"
+        "168": "Liquidación de Contratación de Crianza Pollos Parrilleros C"
+        "169": "Liquidación de Crianza Pollos Parrilleros A"
+        "170": "Liquidación de Crianza Pollos Parrilleros B"
+        "171": "Liquidación de Compra de Caña de Azúcar A"
+        "172": "Liquidación de Compra de Caña de Azúcar B"
+        "180": "Cuenta de Venta y Líquido Producto A - Sector Pecuario"
+        "182": "Cuenta de Venta y Líquido Producto B - Sector Pecuario"
+        "183": "Liquidación de Compra A - Sector Pecuario"
+        "185": "Liquidación de Compra B - Sector Pecuario"
+        "186": "Liquidación de Compra Directa A - Sector Pecuario"
+        "188": "Liquidación de Compra Directa B - Sector Pecuario"
+        "189": "Liquidación de Compra Directa C - Sector Pecuario"
+        "190": "Liquidación de Venta Directa A - Sector Pecuario"
+        "191": "Liquidación de Venta Directa B - Sector Pecuario"
+        "195": "Factura Clase T"
+        "196": "Nota de Débito Clase T"
+        "197": "Nota de Crédito Clase T"
+        "201": "Factura de Crédito Electrónica MiPyME (FCE) A"
+        "202": "Nota de Débito Electrónica MiPyME (FCE) A"
+        "203": "Nota de Crédito Electrónica MiPyME (FCE) A"
+        "206": "Factura de Crédito Electrónica MiPyME (FCE) B"
+        "207": "Nota de Débito Electrónica MiPyME (FCE) B"
+        "208": "Nota de Crédito Electrónica MiPyME (FCE) B"
+        "211": "Factura de Crédito Electrónica MiPyME (FCE) C"
+        "212": "Nota de Débito Electrónica MiPyME (FCE) C"
+        "213": "Nota de Crédito Electrónica MiPyME (FCE) C"
+        "331": "Liquidación Secundaria de Granos"
+        "332": "Certificación Electrónica (Granos)"
+    co:
+      title:
+        standard: "Factura electrónica de venta"
+        credit-note: "Nota de crédito electrónica"

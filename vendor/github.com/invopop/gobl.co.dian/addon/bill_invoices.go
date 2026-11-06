@@ -1,0 +1,293 @@
+package dian
+
+import (
+	"fmt"
+
+	"github.com/invopop/gobl/bill"
+	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/head"
+	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/rules"
+	"github.com/invopop/gobl/rules/is"
+	"github.com/invopop/gobl/tax"
+)
+
+var invoiceCorrectionDefinitions = []*tax.CorrectionDefinition{
+	{
+		Schema: bill.ShortSchemaInvoice,
+		Types: []cbc.Key{
+			bill.InvoiceTypeCreditNote,
+			bill.InvoiceTypeDebitNote,
+		},
+		Extensions: []cbc.Key{
+			ExtKeyCreditCode,
+			ExtKeyDebitCode,
+		},
+		ReasonRequired: true,
+		Stamps: []cbc.Key{
+			StampCUDE,
+		},
+	},
+}
+
+func normalizeInvoice(inv *bill.Invoice) {
+	if inv == nil {
+		return
+	}
+	normalizeInvoiceParty(inv.Supplier, cbc.CodeMap{
+		ExtKeyFiscalResponsibility: "R-99-PN",
+	})
+	// Customers default to tributo ZZ; suppliers carry no assumable tributo.
+	normalizeInvoiceParty(inv.Customer, cbc.CodeMap{
+		ExtKeyFiscalResponsibility: "R-99-PN",
+		ExtKeyTaxScheme:            "ZZ",
+	})
+}
+
+func normalizeInvoiceParty(p *org.Party, defaults cbc.CodeMap) {
+	if p == nil || !isColombian(p.TaxID) {
+		return
+	}
+	p.Ext = tax.ExtensionsOf(defaults).Merge(p.Ext)
+}
+
+func billInvoiceRules() *rules.Set {
+	return rules.For(new(bill.Invoice),
+		rules.Assert("14", "invoice must be in COP or provide exchange rate for conversion", currency.CanConvertTo(currency.COP)),
+		// Code 01: invoice type restriction
+		rules.Assert("01", "invoice type must be one of standard, credit-note, debit-note, or proforma",
+			bill.InvoiceTypeIn(
+				bill.InvoiceTypeStandard,
+				bill.InvoiceTypeCreditNote,
+				bill.InvoiceTypeDebitNote,
+				bill.InvoiceTypeProforma,
+			),
+		),
+		// Supplier validation
+		// Code 02: Colombian supplier must have at least one address
+		// Code 03: Colombian supplier with tax ID code must have municipality ext
+		// Code 04: Colombian supplier must have fiscal responsibility ext
+		rules.Field("supplier",
+			rules.When(
+				is.Func("colombian supplier", supplierIsColombian),
+				rules.Field("addresses",
+					rules.Assert("02", "at least one address is required for Colombian suppliers", is.Length(1, 0)),
+				),
+			),
+			rules.When(
+				is.Func("colombian supplier with code", supplierMunicipalityRequired),
+				rules.Field("ext",
+					rules.Assert("03", fmt.Sprintf("extension '%s' is required", ExtKeyMunicipality),
+						tax.ExtensionsRequire(ExtKeyMunicipality),
+					),
+				),
+			),
+			rules.When(
+				is.Func("colombian supplier", supplierIsColombian),
+				rules.Field("ext",
+					rules.Assert("04", fmt.Sprintf("extension '%s' is required", ExtKeyFiscalResponsibility),
+						tax.ExtensionsRequire(ExtKeyFiscalResponsibility),
+					),
+				),
+			),
+		),
+		// Customer validation
+		// Code 05: customer tax_id required when not simplified
+		rules.When(
+			is.Func("not simplified", invoiceNotSimplified),
+			rules.Field("customer",
+				rules.Field("tax_id",
+					rules.Assert("05", "customer tax ID is required", is.Present),
+				),
+			),
+		),
+		// Code 06: Colombian customer must have at least one address
+		// Code 07: Colombian customer with tax ID code must have municipality ext
+		// Code 08: Colombian customer must have fiscal responsibility ext
+		rules.Field("customer",
+			rules.When(
+				is.Func("colombian customer", customerIsColombian),
+				rules.Field("addresses",
+					rules.Assert("06", "at least one address is required for Colombian customers", is.Length(1, 0)),
+				),
+			),
+			rules.When(
+				is.Func("colombian customer with code", customerMunicipalityRequired),
+				rules.Field("ext",
+					rules.Assert("07", fmt.Sprintf("extension '%s' is required", ExtKeyMunicipality),
+						tax.ExtensionsRequire(ExtKeyMunicipality),
+					),
+				),
+			),
+			rules.When(
+				is.Func("colombian customer", customerIsColombian),
+				rules.Field("ext",
+					rules.Assert("08", fmt.Sprintf("extension '%s' is required", ExtKeyFiscalResponsibility),
+						tax.ExtensionsRequire(ExtKeyFiscalResponsibility),
+					),
+				),
+			),
+		),
+		// Preceding validation
+		// Code 09: preceding required for credit/debit notes
+		rules.When(
+			bill.InvoiceTypeIn(bill.InvoiceTypeCreditNote, bill.InvoiceTypeDebitNote),
+			rules.Field("preceding",
+				rules.Assert("09", "preceding documents are required for credit and debit notes", is.Present),
+			),
+		),
+		// Code 10: preceding credit code required for credit notes
+		rules.When(
+			bill.InvoiceTypeIn(bill.InvoiceTypeCreditNote),
+			rules.Field("preceding",
+				rules.Each(
+					rules.Field("ext",
+						rules.Assert("10", fmt.Sprintf("extension '%s' is required for credit notes", ExtKeyCreditCode),
+							tax.ExtensionsRequire(ExtKeyCreditCode),
+						),
+					),
+					rules.Field("reason",
+						rules.Assert("12", "preceding reason is required", is.Present),
+					),
+				),
+			),
+		),
+		// Code 11: preceding debit code required for debit notes
+		rules.When(
+			bill.InvoiceTypeIn(bill.InvoiceTypeDebitNote),
+			rules.Field("preceding",
+				rules.Each(
+					rules.Field("ext",
+						rules.Assert("11", fmt.Sprintf("extension '%s' is required for debit notes", ExtKeyDebitCode),
+							tax.ExtensionsRequire(ExtKeyDebitCode),
+						),
+					),
+					rules.Field("reason",
+						rules.Assert("13", "preceding reason is required", is.Present),
+					),
+				),
+			),
+		),
+		// Code 15: DIAN numbering requires plain positive integers
+		rules.Field("code",
+			rules.Assert("15", "invoice code must be a positive integer without leading zeroes",
+				is.Matches(`^[1-9][0-9]*$`),
+			),
+		),
+		// Codes 16/17: DIAN restricts credit notes without a referenced document (91-22)
+		rules.When(
+			bill.InvoiceTypeIn(bill.InvoiceTypeCreditNote),
+			rules.Field("preceding",
+				rules.Each(
+					rules.When(
+						is.Func("missing dian-cude stamp", precedingMissingCUDE),
+						// Code 16: DIAN rule CBF03a forbids revoking (credit code 2) unreferenced invoices
+						rules.Field("ext",
+							rules.Assert("16", fmt.Sprintf("extension '%s' cannot be '2' (revoked) without a '%s' stamp", ExtKeyCreditCode, StampCUDE),
+								tax.ExtensionsExcludeCodes(ExtKeyCreditCode, "2"),
+							),
+						),
+						// Code 17: DIAN rule CAE02 limits the credited period to a single calendar month
+						rules.Field("period",
+							rules.Assert("17", fmt.Sprintf("period must be within a single calendar month without a '%s' stamp", StampCUDE),
+								is.Func("single calendar month", periodInSingleMonth),
+							),
+						),
+					),
+				),
+			),
+		),
+		// Code 18: DIAN rule IA04 requires a payment due date on credit sales
+		rules.When(
+			bill.InvoiceTypeIn(bill.InvoiceTypeStandard, bill.InvoiceTypeCreditNote, bill.InvoiceTypeDebitNote),
+			rules.Assert("18", "payment due date is required when the invoice is not fully paid",
+				is.Func("credit sale has due date", invoiceCreditSaleHasDueDate),
+			),
+		),
+	)
+}
+
+func isColombian(tID *tax.Identity) bool {
+	return tID != nil && tID.Country.In("CO")
+}
+
+// municipalityCodeRequired checks if the municipality code is required for the given tax
+// identity by checking to see if the customer is a Colombian company.
+func municipalityCodeRequired(tID *tax.Identity) bool {
+	if tID == nil {
+		return false
+	}
+	if !tID.Country.In("CO") {
+		return false
+	}
+	return tID.Code != ""
+}
+
+func supplierIsColombian(val any) bool {
+	p, ok := val.(*org.Party)
+	return ok && p != nil && isColombian(p.TaxID)
+}
+
+func supplierMunicipalityRequired(val any) bool {
+	p, ok := val.(*org.Party)
+	return ok && p != nil && municipalityCodeRequired(p.TaxID)
+}
+
+func customerIsColombian(val any) bool {
+	p, ok := val.(*org.Party)
+	return ok && p != nil && isColombian(p.TaxID)
+}
+
+func customerMunicipalityRequired(val any) bool {
+	p, ok := val.(*org.Party)
+	return ok && p != nil && municipalityCodeRequired(p.TaxID)
+}
+
+// invoiceCreditSaleHasDueDate passes when the invoice is fully paid or its payment terms carry a due date.
+func invoiceCreditSaleHasDueDate(val any) bool {
+	inv, ok := val.(*bill.Invoice)
+	if !ok || inv == nil || inv.Totals == nil {
+		return true
+	}
+	if inv.Totals.Paid() {
+		return true
+	}
+	if inv.Payment == nil || inv.Payment.Terms == nil {
+		return false
+	}
+	for _, dd := range inv.Payment.Terms.DueDates {
+		if dd != nil && dd.Date != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// periodInSingleMonth reports whether a complete period starts and ends in the same calendar month.
+func periodInSingleMonth(val any) bool {
+	p, ok := val.(*cal.Period)
+	if !ok || p == nil || p.Start == nil || p.End == nil {
+		return true
+	}
+	return p.Start.Year == p.End.Year && p.Start.Month == p.End.Month
+}
+
+// precedingMissingCUDE reports whether a preceding ref lacks a usable dian-cude stamp, making the note a 91-22.
+func precedingMissingCUDE(val any) bool {
+	ref, ok := val.(*org.DocumentRef)
+	if !ok || ref == nil {
+		return false
+	}
+	st := head.GetStamp(ref.Stamps, StampCUDE)
+	return st == nil || st.Value == ""
+}
+
+func invoiceNotSimplified(val any) bool {
+	inv, ok := val.(*bill.Invoice)
+	if !ok || inv == nil {
+		return true
+	}
+	return !tax.TagSimplified.In(inv.GetTags()...)
+}

@@ -1,0 +1,248 @@
+fr:
+  page: "Page %{page} sur %{count}"
+  billing:
+    invoice: &invoice
+      title:
+        standard: "Facture"
+        standard-simplified: "Facture Simplifiée"
+        proforma: "Facture Proforma"
+        corrective: "Facture Rectificative"
+        credit-note: "Note de Crédit"
+        debit-note: "Note de Débit"
+        other: "Document"
+        paid: "Payé"
+        void: "Annulé"
+        self-billed: "Autofacturation"
+        untdid:
+          "325": "Facture proforma"
+          "380": "Facture"
+          "381": "Avoir"
+          "383": "Note de débit"
+          "384": "Facture rectificative"
+          "326": "Facture partielle"
+          "389": "Facture auto-facturée"
+          "261": "Avoir auto-facturé"
+          "386": "Facture d'acompte"
+          "393": "Facture cédée (affacturage)"
+          "396": "Avoir cédé (affacturage)"
+      summary: &summary
+        title: "Résumé"
+        issue_date: "Date d'émission"
+        value_date: "Date de valeur"
+        taxable_event: "Exigibilité TVA"
+        taxable_event_date: "Date d'exigibilité de la TVA"
+        tax_points:
+          issue: "TVA sur les débits"
+          delivery: "Date de livraison"
+          payment: "Date de paiement"
+        operation_date: "Date d'opération"
+        currency: "Devise"
+        currency_value: "%{desc} (%{code})"
+        preceding_document: "Documents précédents"
+        replaced_documents: "Documents remplacés"
+        corrected_documents: "Documents corrigés"
+        order: "Commande"
+        order_period: "Période"
+        order_period_label: "%{label}"
+        order_period_range: "%{start} au %{end}"
+        contract: "Contrat"
+      supplier:
+        title: "Fournisseur"
+      customer:
+        title: "Client"
+      receiver:
+        title: "Adresse de livraison"
+        date: "Date de livraison: %{date}"
+        period: "Date de livraison: du %{start} au %{end}"
+      lines: &lines
+        title: "Lignes"
+        i: "#"
+        ref: "Réf."
+        description: "Description"
+        quantity: "Qté."
+        unit: "Unité"
+        price: "Prix"
+        discount: "Remise"
+        charges: "Frais"
+        total: "Total"
+        no_percent: "—"
+        exemption: "Exonération"
+        on_behalf_of: "Pour le compte de"
+        period: "Période"
+        period_range: "%{start} au %{end}"
+      totals: &totals
+        sum: "Somme"
+        discount: "Remise"
+        charge: "Frais"
+        title: "Totals"
+        prices_include: "%{tax} incluse"
+        total: "Total"
+        taxes: "Taxe"
+        total_with_tax: "Total avec taxe"
+        retained_tax: "Taxe retenue"
+        rounding: "Rounding"
+        total_to_pay: "Total à payer"
+        advance: "Avance"
+        due_sum: "Total dû"
+        exchange_rate: "Échange en %{to} (%{amount})"
+        carried_fwd: "À reporter"
+        brought_fwd: "Reporté"
+      taxes:
+        title: "Taxes"
+        category: "Taxe"
+        base: "Base"
+        rate: "Taux"
+        amount: "Montant"
+        exemption: "Exonération"
+        no_percent: "—"
+      payment: &payment
+        title: "Paiement"
+        instructions: &payment_instructions
+          method: "Méthode de paiement"
+          ref: "Référence"
+          ref_line: "Référence : %{ref}"
+          amount: "Montant"
+          description: "Description"
+          bank_data: "Instructions de virement bancaire"
+          card: "Paiement par carte"
+          card_detail: "Paiement effectué avec la carte se terminant par %{last4} appartenant à %{holder}"
+          direct_debit: "Prélèvement automatique"
+          mandate_ref: "Mandat : %{ref}"
+          creditor: "ID créancier : %{creditor}"
+          observations: "Notes de paiement"
+          bank_name: "Banque: %{name}"
+          iban: "IBAN: %{iban}"
+          account_number: "Numéro de compte: %{num}"
+          clearing: "Code de compensation : %{code}"
+          bic: "BIC: %{bic}"
+          online: "Lien de paiement"
+          methods:
+            card: "Carte bancaire"
+            card+credit: "Carte de crédit"
+            card+debit: "Carte de débit"
+            credit-transfer: "Virement bancaire"
+            debit-transfer: "Virement de débit"
+            cash: "Espèces"
+            direct-debit: "Prélèvement automatique"
+            online: "En ligne"
+            cheque: "Cheque"
+        terms:
+          key: "Conditions de paiement"
+          notes: "Notes sur les conditions de paiement"
+          due_dates: 
+            one: "Date d'échéance"
+            many: "Dates d'échéance"
+          keys:
+            na: "Non spécifié"
+            end-of-month: "Fin du mois"
+            due-date: "Date limite"
+            deferred: "Après la date limite"
+            proximo: "Mois prochain"
+            instant: "Livraison sur facture"
+            elective: "Choix du client"
+            pending: "A déterminer par le fournisseur"
+            advance: "Payé"
+            delivery: "A la livraison"
+      notes:
+        title: "Notes"
+
+    payment:
+      <<: *invoice
+      title:
+        request: "Demande de paiement"
+        advice: "Avis de paiement"
+        receipt: "Reçu de paiement"
+        paid: "Payé"
+        void: "Annulé"
+
+      lines:
+        <<: *lines
+        document: "Document"
+
+      methods:
+        title: "Détails de paiement"
+        date: "Date"
+        amount: "Montant"
+        total: "Total payé"
+        instructions: *payment_instructions
+
+    delivery:
+      <<: *invoice
+      title:
+        advice: "Avis de Livraison"
+        note: "Bon de Livraison"
+        waybill: "Lettre de Voiture"
+        receipt: "Récépissé de Livraison"
+
+      summary:
+        <<: *summary
+        despatch_date: "Date d'expédition"
+        receive_date: "Date de réception"
+        preceding_document: "Document précédent"
+
+      despatcher:
+        title: "Expéditeur"
+
+      receiver:
+        title: "Destinataire"
+
+      courier:
+        title: "Transporteur"
+
+      tracking:
+        title: "Informations de suivi"
+        code: "Code de suivi"
+        website: "Lien de suivi"
+
+    order:
+      <<: *invoice
+      title:
+        purchase: "Bon de Commande"
+        sale: "Bon de Vente"
+        quote: "Devis"
+
+      summary:
+        <<: *summary
+        preceding_document: "Document précédent"
+        contract: "Contrat"
+        period: "Période"
+
+      buyer:
+        title: "Acheteur"
+
+      seller:
+        title: "Vendeur"
+
+  org:
+    party:
+      tax_id: "%{label}: (%{country}) %{code}"
+      tax_id_no_country: "%{label}: %{code}"
+      tel: "Tél: %{num}"
+      tel_label: "Tél: %{num} (%{label})"
+      email:
+        one: "Email: %{addr}"
+        other: "Emails: %{addr}"
+      email_label: "%{addr} (%{label})"
+      identity: "%{label}: %{code}"
+      identity_code: "Code d'identité"
+      identity_labels:
+        passport: "Passeport"
+      po_box: "Boîte postale %{po_box}"
+      labels:
+        default: "Code fiscal"
+      ext: "%{label}: %{value}"
+      ext_map:
+        # Assurez-vous que cette liste est à jour dans toutes les langues !
+        co-dian-municipality: "Municipalité"
+      reg:
+        capital: "Capital social: %{amount}"
+        registration: "Inscrit au registre:"
+        book: "Livre %{id}"
+        volume: "Volume %{id}"
+        sheet: "Feuille %{id}"
+        section: "Section %{id}"
+        page: "Page %{id}"
+        entry: "Entrée %{id}"
+    address:
+      label: "%{label}"
+      country: "(%{country})"

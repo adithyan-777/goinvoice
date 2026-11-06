@@ -1,0 +1,61 @@
+package pt
+
+import (
+	"strings"
+
+	"github.com/invopop/gobl"
+	"github.com/invopop/gobl.html/components/assets"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl/cbc"
+)
+
+templ Stylesheets(env *gobl.Envelope) {
+	if atATCUD(env) != "" {
+		@assets.Stylesheet("pt.css")
+	}
+}
+
+templ ATQR(env *gobl.Envelope) {
+	if atcud := atATCUD(env); atcud != "" {
+		if qr := atQR(env); qr != "" {
+			<section class="pt">
+				<div class="at">
+					<div class="label">
+						ATCUD: { atcud }
+						if docCode := atDocCode(env); docCode != "" {
+							<br/>
+							@t.T("regimes.pt.at.doc_code"): { docCode }
+						}
+					</div>
+					<div class="qr">
+						<img src={ generateQR(qr) }/>
+					</div>
+					if notes := qrNotes(ctx, env); len(notes) > 0 {
+						<div class="notes">
+							@templ.Raw(strings.Join(notes, " &middot; "))
+						</div>
+					}
+				</div>
+			</section>
+		}
+	}
+}
+
+templ TitleType(doc internal.Document) {
+	if isPortuguese(doc) {
+		@titleType(doc)
+	}
+}
+
+templ JoinCode(doc internal.Document, series, code cbc.Code) {
+	if isPortuguese(doc) {
+		{ series.JoinWith("/", code).String() }
+	}
+}
+
+templ titleType(doc internal.Document) {
+	if typ := docType(doc); typ != cbc.CodeEmpty {
+		@t.T("regimes.pt.title." + string(typ))
+	}
+}

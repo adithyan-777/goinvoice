@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gobl.org/draft-0/currency/exchange-rate",
+  "$ref": "#/$defs/currency.ExchangeRate",
+  "$defs": {
+    "currency.ExchangeRate": {
+      "properties": {
+        "from": {
+          "$ref": "https://gobl.org/draft-0/currency/code",
+          "title": "From",
+          "description": "Currency code this will be converted from."
+        },
+        "to": {
+          "$ref": "https://gobl.org/draft-0/currency/code",
+          "title": "To",
+          "description": "Currency code this exchange rate will convert into."
+        },
+        "at": {
+          "$ref": "https://gobl.org/draft-0/cal/date-time",
+          "title": "At",
+          "description": "Effective date and time at which the exchange rate was determined by the source.\nThe time may be zero if referring to a specific day only."
+        },
+        "source": {
+          "$ref": "https://gobl.org/draft-0/cbc/key",
+          "title": "Source",
+          "description": "Key identifying the source the exchange rate was obtained from. Typically set by\nan application that updates exchange rates automatically."
+        },
+        "amount": {
+          "$ref": "https://gobl.org/draft-0/num/amount",
+          "title": "Amount",
+          "description": "How much is 1 of the \"from\" currency worth in the \"to\" currency."
+        }
+      },
+      "type": "object",
+      "required": [
+        "from",
+        "to",
+        "amount"
+      ],
+      "description": "ExchangeRate contains data on the rate to be used when converting amounts from one currency into another."
+    }
+  }
+}

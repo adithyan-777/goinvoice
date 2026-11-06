@@ -1,0 +1,534 @@
+# Use "Sentence case" for all labels, as opposed to "Title Case".
+en:
+  page: "Page %{page} of %{count}"
+
+  billing:
+    invoice: &invoice
+      title:
+        standard: "Invoice"
+        standard-simplified: "Simplified invoice"
+        proforma: "Proforma invoice"
+        corrective: "Replacement invoice"
+        credit-note: "Credit note"
+        debit-note: "Debit note"
+        adjustment: "Adjustment invoice"
+        other: "Document"
+        paid: "Paid"
+        void: "Void"
+        self-billed: "Self-billed"
+        untdid:
+          "325": "Proforma invoice"
+          "380": "Invoice"
+          "381": "Credit note"
+          "383": "Debit note"
+          "384": "Corrective invoice"
+          "326": "Partial invoice"
+          "389": "Self-billed invoice"
+          "261": "Self-billed credit note"
+          "386": "Prepayment invoice"
+          "393": "Factored invoice"
+          "396": "Factored credit note"
+
+      summary: &summary
+        title: "Summary"
+        issue_date: "Issue date"
+        value_date: "Value date"
+        taxable_event: "Taxable event"
+        taxable_event_date: "Taxable event date"
+        tax_points:
+          issue: "Issue date"
+          delivery: "Delivery date"
+          payment: "Payment date"
+        operation_date: "Operation date"
+        currency: "Currency"
+        currency_value: "%{desc} (%{code})"
+        preceding_document: "Preceding documents"
+        replaced_documents: "Replaced documents"
+        corrected_documents: "Corrected documents"
+        order: "Order"
+        order_period: "Period"
+        order_period_label: "%{label}"
+        order_period_range: "%{start} to %{end}"
+        contract: "Contract"
+        ext_map:
+          mx-cfdi-issue-place: "Place of issue"
+          mx-cfdi-payment-method: "Payment Method"
+
+      supplier:
+        title: "Supplier"
+
+      customer:
+        title: "Customer"
+
+      receiver:
+        title: "Delivery address"
+        date: "Delivery date: %{date}"
+        period: "Delivery date: %{start} to %{end}"
+
+      lines: &lines
+        title: "Lines"
+        i: "#"
+        ref: "Ref."
+        description: "Description"
+        quantity: "Qty."
+        unit: "Unit"
+        price: "Price"
+        discount: "Disc."
+        charges: "Chgs."
+        total: "Total"
+        no_percent: "—"
+        exemption: "Exemption"
+        on_behalf_of: "On behalf of"
+        period: "Period"
+        period_range: "%{start} to %{end}"
+
+      totals: &totals
+        sum: "Sum"
+        discount: "Discount"
+        charge: "Charge"
+        title: "Totals"
+        prices_include: "Included %{tax}"
+        total: "Total"
+        taxes: "Tax"
+        total_with_tax: "Total with tax"
+        retained_tax: "Tax withheld"
+        rounding: "Rounding"
+        total_to_pay: "Total to pay"
+        advance: "Advance"
+        due_sum: "Total due"
+        exchange_rate: "Exchange to %{to} (%{amount})"
+        carried_fwd: "Carried forward"
+        brought_fwd: "Brought forward"
+
+      taxes:
+        title: "Taxes"
+        category: "Tax"
+        base: "Base"
+        rate: "Rate"
+        amount: "Amount"
+        exemption: "Exemption"
+        no_percent: "—"
+
+      payment: &payment
+        title: "Payment"
+        instructions: &payment_instructions
+          method: "Method of payment"
+          ref: "Reference"
+          ref_line: "Reference: %{ref}"
+          amount: "Amount"
+          description: "Description"
+          bank_data: "Bank transfer instructions"
+          card: "Card payment"
+          card_detail: "Payment made to card ending %{last4} belonging to %{holder}"
+          direct_debit: "Direct debit"
+          mandate_ref: "Mandate: %{ref}"
+          creditor: "Creditor ID: %{creditor}"
+          observations: "Payment notes"
+          bank_name: "Bank: %{name}"
+          iban: "IBAN: %{iban}"
+          account_number: "Account number: %{num}"
+          clearing: "Clearing code: %{code}"
+          bic: "BIC: %{bic}"
+          online: "Payment link"
+          methods:
+            card: "Bank card"
+            card+credit: "Credit card"
+            card+debit: "Debit card"
+            credit-transfer: "Bank transfer"
+            debit-transfer: "Debit transfer"
+            cash: "Cash"
+            direct-debit: "Direct debit"
+            online: "Online"
+            cheque: "Cheque"
+        terms:
+          key: "Payment terms"
+          notes: "Payment terms notes"
+          due_dates:
+            one: "Due date"
+            other: "Due dates"
+          keys:
+            na: "Not specified"
+            end_of_month: "End of month"
+            due_date: "On due date"
+            deferred: "After due date"
+            proximo: "Next month"
+            instant: "On invoice delivery"
+            elective: "Chosen by customer"
+            pending: "To determine by supplier"
+            advanced: "Paid"
+            delivery: "On delivery"
+
+      notes:
+        title: "Notes"
+
+    payment:
+      <<: *invoice
+      title:
+        request: "Payment request"
+        advice: "Remittance advice"
+        receipt: "Payment receipt"
+        paid: "Paid"
+        void: "Void"
+
+      lines:
+        <<: *lines
+        document: "Document"
+
+      methods:
+        title: "Methods"
+        date: "Date"
+        amount: "Amount"
+        total: "Total paid"
+        instructions: *payment_instructions
+
+    delivery:
+      <<: *invoice
+      title:
+        advice: "Delivery advice"
+        note: "Delivery note"
+        waybill: "Waybill"
+        receipt: "Delivery receipt"
+
+      summary:
+        <<: *summary
+        despatch_date: "Despatch date"
+        receive_date: "Receive date"
+        preceding_document: "Previous document"
+
+      despatcher:
+        title: "Despatcher"
+
+      receiver:
+        title: "Receiver"
+
+      courier:
+        title: "Courier"
+
+      tracking:
+        title: "Tracking information"
+        code: "Tracking code"
+        website: "Tracking link"
+
+    order:
+      <<: *invoice
+      title:
+        purchase: "Purchase order"
+        sale: "Sales order"
+        quote: "Quote"
+
+      summary:
+        <<: *summary
+        preceding_document: "Previous document"
+        contract: "Contract"
+        period: "Period"
+
+      buyer:
+        title: "Buyer"
+
+      seller:
+        title: "Seller"
+
+  org:
+    party:
+      tax_id: "%{label}: (%{country}) %{code}"
+      tax_id_no_country: "%{label}: %{code}"
+      person: "%{name}"
+      person_label: "%{label}: %{name}"
+      tel: "Tel: %{num}"
+      tel_label: "Tel: %{num} (%{label})"
+      email:
+        one: "Email: %{addr}"
+        other: "Emails: %{addr}"
+      email_label: "%{addr} (%{label})"
+      website: "Web: %{url}"
+      website_label: "%{label}: %{url}"
+      po_box: "P.O. box %{po_box}"
+      labels:
+        default: "TIN"
+        ar: "CUIT"
+        co: "NIT"
+        de: "USt-IdNr."
+        es: "NIF"
+        fr: "TVA"
+        it: "P.IVA"
+        mx: "RFC"
+        pl: "NIP"
+        pt: "NIF"
+        sg: "GST Reg No."
+      identity: "%{label}: %{code}"
+      identity_code: "Identity code"
+      identity_labels:
+        it-fiscal-code: "Codice fiscale"
+        de-tax-number: "St. -Nr."
+        passport: "Passport"
+      ext: "%{label}: %{value}"
+      ext_map:
+        co-dian-municipality: "Municipality"
+        mx-cfdi-fiscal-regime: "Régimen fiscal"
+        mx-cfdi-post-code: "Lugar"
+        mx-cfdi-use: "Uso CFDI"
+      reg:
+        capital: "Social capital: %{amount}"
+        registration: "Registration:"
+        book: "Book %{id}"
+        volume: "Volume %{id}"
+        sheet: "Sheet %{id}"
+        section: "Section %{id}"
+        page: "Page %{id}"
+        entry: "Entry %{id}"
+    address:
+      label: "%{label}:"
+      country: "(%{country})"
+
+  regimes:
+    pl:
+      ksef-id: "ID: %{id}"
+      title:
+        # Official KSeF FA_VAT document types ("RodzajFaktury"). Polish law
+        # has no separate credit note document: all corrections are a
+        # "faktura korygująca" (corrective invoice).
+        VAT: "Invoice"
+        ZAL: "Prepayment invoice"
+        ROZ: "Settlement invoice"
+        UPR: "Simplified invoice"
+        KOR: "Corrective invoice"
+        KOR_ZAL: "Prepayment corrective invoice"
+        KOR_ROZ: "Settlement corrective invoice"
+    co:
+      title:
+        standard: "Electronic sales invoice"
+        credit-note: "Electronic credit note"
+    it:
+      # Reference assigned by the AdE when the commercial document is
+      # accepted; it must be printed on the ticket.
+      ade-ref: "AdE reference"
+      # Reference assigned by the AdE when the commercial document is
+      # voided; it must be printed on the ticket of the annulled document.
+      ade-void-ref: "AdE annulment reference"
+      title:
+        # AdE receipt document names ("documento commerciale"); corrections
+        # keep the commercial document title per Risposta all'interpello
+        # n. 167/2020.
+        ticket: "Commercial document"
+        ticket-corrective: "Cancellation commercial document"
+    gr:
+      title:
+        1:
+          1: "Sales invoice"
+          2: "Sales invoice" # "Sales invoice/Intra-community supplies"
+          3: "Sales invoice" # "Sales invoice/Third country supplies"
+          4: "Sales invoice" # "Sales invoice/Sale on behalf of third parties"
+          5: "Sales invoice" # "Sales invoice/Clearance of sales on behalf of third parties – Fees from sales on behalf of third parties"
+          6: "Sales invoice" # "Sales invoice/Supplemental accounting source document"
+        2:
+          1: "Service invoice" # Service rendered invoice
+          2: "Service invoice" # "Intra-community service rendered invoice"
+          3: "Service invoice" # "Third country service rendered invoice"
+          4: "Service invoice" # "Service rendered invoice/Supplemental accounting source document"
+        3:
+          1: "Proof of expenditure" # "Proof of expenditure (non-liable issuer)"
+          2: "Proof of expenditure" # "Proof of expenditure (denial of issuance by liable issuer)"
+        5:
+          1: "Credit note" # "Credit invoice/Associated"
+          2: "Credit note" # "Credit invoice/Non-associated"
+        6:
+          1: "Self-delivery record"
+          2: "Self-supply record"
+        7:
+          1: "Income contract" # "Contract – Income"
+        8:
+          1: "Rental income" # "Rents – Income"
+          2: "Accommodation tax receipt" # "Special record – Accommodation tax collection/Payment receipt"
+        11:
+          1: "Retail sales receipt"
+          2: "Service rendered receipt"
+          3: "Simplified invoice"
+          4: "Retail sales credit note"
+          5: "Retail sales receipt" # "Retail sales receipt on behalf of third parties"
+        13:
+          1: "Retail purchases" # "Expenses – Domestic/Foreign retail transaction purchases"
+          2: "Retail provision" # "Domestic/Foreign retail transaction provision"
+          3: "Shared utility bills"
+          4: "Subscriptions"
+          30: "Self-declared accounting document" # "Self-declared entity accounting source documents (Dynamic)"
+          31: "Retail sales credit note" # "Domestic/Foreign retail sales credit note"
+        14:
+          1: "Invoice - Intra-EU acquisitions" # "Invoice/Intra-community acquisitions"
+          2: "Invoice - Third country imports" # "Invoice/Third country acquisitions"
+          3: "Invoice - Intra-EU services" # "Invoice/Intra-community services receipt"
+          4: "Invoice - Third country services" # "Invoice/Third country services receipt"
+          5: "EFKA"
+          30: "Self-declared accounting document" # "Self-declared entity accounting source documents (Dynamic)"
+          31: "Domestic/Foreign credit note"
+        15:
+          1: "Contract-Expense"
+        16:
+          1: "Rent-Expense"
+        17:
+          1: "Payroll"
+          2: "Amortizations"
+          3: "Income adjustment (accounting base)" # "Other income adjustment/Regularization entries – Accounting base"
+          4: "Income adjustment (tax base) " # "Other income adjustment/Regularization entries – Tax base"
+          5: "Expense adjustment (accounting base)" # "Other expense adjustment/Regularization entries – Accounting base"
+          6: "Expense adjustment (tax base)" # "Other expense adjustment/Regularization entries – Tax base"
+    ar:
+      title:
+        "1": "Invoice A"
+        "2": "Debit Note A"
+        "3": "Credit Note A"
+        "4": "Receipt A"
+        "5": "Cash Sales Note A"
+        "6": "Invoice B"
+        "7": "Debit Note B"
+        "8": "Credit Note B"
+        "9": "Receipt B"
+        "10": "Cash Sales Note B"
+        "11": "Invoice C"
+        "12": "Debit Note C"
+        "13": "Credit Note C"
+        "15": "Receipt C"
+        "16": "Cash Sales Note C"
+        "17": "Public Services Settlement Class A"
+        "18": "Public Services Settlement Class B"
+        "19": "Export Invoice"
+        "20": "Debit Note for Foreign Operations"
+        "21": "Credit Note for Foreign Operations"
+        "22": "Invoice - Simplified Export Permit - Decree 855/97"
+        "23": "Voucher A for Primary Purchase in the Maritime Fishing Sector"
+        "24": "Voucher A for Primary Consignment in the Maritime Fishing Sector"
+        "25": "Voucher B for Primary Purchase in the Maritime Fishing Sector"
+        "26": "Voucher B for Primary Consignment in the Maritime Fishing Sector"
+        "27": "Single Commercial Tax Settlement Class A"
+        "28": "Single Commercial Tax Settlement Class B"
+        "29": "Single Commercial Tax Settlement Class C"
+        "30": "Used Goods Purchase Voucher"
+        "32": "Materials Recycling Voucher"
+        "33": "Primary Grain Settlement"
+        "34": "Voucher A per Annex I, Section A, subsection f), R.G. No. 1415"
+        "35": "Voucher B per Annex I, Section A, subsection f), R.G. No. 1415"
+        "36": "Voucher C per Annex I, Section A, subsection f), R.G. No. 1415"
+        "37": "Debit Note or Equivalent Document compliant with R.G. No. 1415"
+        "38": "Credit Note or Equivalent Document compliant with R.G. No. 1415"
+        "39": "Other Voucher A compliant with R.G. No. 1415"
+        "40": "Other Voucher B compliant with R.G. No. 1415"
+        "41": "Other Voucher C compliant with R.G. No. 1415"
+        "43": "Credit Note Single Commercial Tax Settlement Class B"
+        "44": "Credit Note Single Commercial Tax Settlement Class C"
+        "45": "Debit Note Single Commercial Tax Settlement Class A"
+        "46": "Debit Note Single Commercial Tax Settlement Class B"
+        "47": "Debit Note Single Commercial Tax Settlement Class C"
+        "48": "Credit Note Single Commercial Tax Settlement Class A"
+        "49": "Used Goods Purchase Invoice to Final Consumer"
+        "50": "Receipt Invoice A - Credit Invoice Regime"
+        "51": "Invoice A with Legend 'Subject to Withholding'"
+        "52": "Debit Note A with Legend 'Subject to Withholding'"
+        "53": "Credit Note A with Legend 'Subject to Withholding'"
+        "54": "Receipt A with Legend 'Subject to Withholding'"
+        "55": "Cash Sales Note M"
+        "56": "Voucher M per Annex I, Section A, subsection f), R.G. No. 1415"
+        "57": "Other Voucher M compliant with R.G. No. 1415"
+        "58": "Sales Account and Product Settlement M"
+        "59": "Settlement M"
+        "60": "Sales Account and Product Settlement A"
+        "61": "Sales Account and Product Settlement B"
+        "63": "Settlement A"
+        "64": "Settlement B"
+        "66": "Import Clearance"
+        "68": "Settlement C"
+        "70": "Credit Invoice Receipt"
+        "81": "Ticket Invoice A - Fiscal Controller"
+        "82": "Ticket Invoice B"
+        "83": "Ticket"
+        "90": "Credit Note - Other Voucher non-compliant with R.G. No. 1415"
+        "99": "Other Voucher non-compliant with R.G. No. 1415"
+        "109": "Ticket C"
+        "110": "Ticket Credit Note"
+        "111": "Ticket Invoice C"
+        "112": "Ticket Credit Note A"
+        "113": "Ticket Credit Note B"
+        "114": "Ticket Credit Note C"
+        "115": "Ticket Debit Note A"
+        "116": "Ticket Debit Note B"
+        "117": "Ticket Debit Note C"
+        "118": "Ticket Invoice M"
+        "119": "Ticket Credit Note M"
+        "120": "Ticket Debit Note M"
+        "150": "Primary Purchase Settlement for the Tobacco Sector A"
+        "151": "Primary Purchase Settlement for the Tobacco Sector B"
+        "157": "Sales Account and Product Settlement A – Poultry Sector"
+        "158": "Sales Account and Product Settlement B – Poultry Sector"
+        "159": "Purchase Settlement A – Poultry Sector"
+        "160": "Purchase Settlement B – Poultry Sector"
+        "161": "Direct Purchase Settlement A – Poultry Sector"
+        "162": "Direct Purchase Settlement B – Poultry Sector"
+        "163": "Direct Purchase Settlement C – Poultry Sector"
+        "164": "Direct Sales Settlement A – Poultry Sector"
+        "165": "Direct Sales Settlement B – Poultry Sector"
+        "166": "Broiler Chicken Farming Contract Settlement A"
+        "167": "Broiler Chicken Farming Contract Settlement B"
+        "168": "Broiler Chicken Farming Contract Settlement C"
+        "169": "Broiler Chicken Farming Settlement A"
+        "170": "Broiler Chicken Farming Settlement B"
+        "171": "Sugar Cane Purchase Settlement A"
+        "172": "Sugar Cane Purchase Settlement B"
+        "180": "Sales Account and Product Settlement A – Livestock Sector"
+        "182": "Sales Account and Product Settlement B – Livestock Sector"
+        "183": "Purchase Settlement A – Livestock Sector"
+        "185": "Purchase Settlement B – Livestock Sector"
+        "186": "Direct Purchase Settlement A – Livestock Sector"
+        "188": "Direct Purchase Settlement B – Livestock Sector"
+        "189": "Direct Purchase Settlement C – Livestock Sector"
+        "190": "Direct Sales Settlement A – Livestock Sector"
+        "191": "Direct Sales Settlement B – Livestock Sector"
+        "195": "Invoice Class T"
+        "196": "Debit Note Class T"
+        "197": "Credit Note Class T"
+        "201": "MiPyMEs Electronic Credit Invoice (FCE) A"
+        "202": "MiPyMEs Electronic Debit Note (FCE) A"
+        "203": "MiPyMEs Electronic Credit Note (FCE) A"
+        "206": "MiPyMEs Electronic Credit Invoice (FCE) B"
+        "207": "MiPyMEs Electronic Debit Note (FCE) B"
+        "208": "MiPyMEs Electronic Credit Note (FCE) B"
+        "211": "MiPyMEs Electronic Credit Invoice (FCE) C"
+        "212": "MiPyMEs Electronic Debit Note (FCE) C"
+        "213": "MiPyMEs Electronic Credit Note (FCE) C"
+        "331": "Secondary Grain Settlement"
+        "332": "Electronic Certification (Grains)"
+    pt:
+      at:
+        doc_code: "AT Code"
+      title:
+        FT: "Invoice"
+        FS: "Simplified invoice"
+        FR: "Invoice-receipt"
+        ND: "Debit note"
+        NC: "Credit note"
+        RC: "Cash receipt"
+        RG: "Receipt"
+        CM: "Table order"
+        CC: "Consignment credit"
+        FC: "Consignment invoice"
+        FO: "Work order"
+        NE: "Purchase order"
+        OU: "Other document"
+        OR: "Quotation"
+        PF: "Proforma invoice"
+        DC: "Delivery document"
+        GR: "Delivery note"
+        GT: "Waybill"
+        GA: "Fixed assets delivery"
+        GC: "Consignment delivery"
+        GD: "Return"
+        RP: "Premium receipt"
+        RE: "Chargeback receipt"
+        CS: "Co-insurer allocation"
+        LD: "Lead co-insurer allocation"
+        RA: "Accepted reinsurance"
+    sg:
+      title:
+        # IRAS requires the words "tax invoice" in a prominent place; the
+        # headings are legally significant and thus not translated.
+        invoice: "Invoice"
+        tax-invoice: "Tax Invoice"
+        simplified-tax-invoice: "Simplified Tax Invoice"
+        customer-accounting-tax-invoice: "Customer Accounting Tax Invoice"

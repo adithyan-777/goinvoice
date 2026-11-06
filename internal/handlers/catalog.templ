@@ -1,0 +1,355 @@
+package handlers
+
+import (
+	"github.com/neo/goinvoice/internal/db/sqlc"
+)
+
+// Datastar expression attributes are held as Go constants because templ
+// parses `{}` in literal attribute values as Go expressions. Dynamic URLs
+// are built with tiny helpers below.
+
+const (
+	dsNavInvoices  = "$nav = 'invoices'; @get('/partials/invoices')"
+	dsNavCustomers = "$nav = 'customers'; @get('/partials/customers')"
+	dsNavSuppliers = "$nav = 'suppliers'; @get('/partials/suppliers')"
+	dsNavProducts  = "$nav = 'products'; @get('/partials/products')"
+	dsPostCustomers = "@post('/customers', {contentType: 'form'})"
+	dsPostSuppliers = "@post('/suppliers', {contentType: 'form'})"
+	dsPostProducts  = "@post('/products', {contentType: 'form'})"
+)
+
+// dsNavActive marks the sidebar link of the current section.
+func dsNavActive(section string) string {
+	return "{'is-active': $nav === '" + section + "'}"
+}
+
+// dsEditGet returns the expression that loads an edit form into the modal.
+func dsEditGet(kind, id string) string {
+	return "$modalOpen = true; @get('/partials/" + kind + "/" + id + "/form')"
+}
+
+// dsUpdate returns the expression that submits an edit form, closes the
+// modal, and refreshes the section.
+func dsUpdate(kind, id string) string {
+	return "$modalOpen = false; @post('/" + kind + "/" + id + "', {contentType: 'form'})"
+}
+
+// dsDelete returns the expression that confirms and deletes a row, then
+// refreshes the section.
+func dsDelete(kind, id, label string) string {
+	return "confirm('Delete " + label + "?') && @post('/" + kind + "/" + id + "/delete')"
+}
+
+templ CustomersSection(rows []sqlc.Customer, errMsg string) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">Customers</h1>
+			<p class="page-head__subtitle">Bill-to parties reused across invoices</p>
+		</div>
+	</div>
+	if errMsg != "" {
+		<div class="alert alert--error" role="alert">{ errMsg }</div>
+	}
+	<div class="card">
+		<div class="card__header"><span class="card__title">Add customer</span></div>
+		<div class="card__body">
+			<form method="post" action="/customers" class="form-grid" data-on:submit__prevent={ dsPostCustomers }>
+				<div class="form-field"><label class="form-label" for="c-name">Name</label><input class="form-input" id="c-name" type="text" name="name" required/></div>
+				<div class="form-field"><label class="form-label" for="c-tax-country">Tax country</label><input class="form-input" id="c-tax-country" type="text" name="tax_country" placeholder="ES"/></div>
+				<div class="form-field"><label class="form-label" for="c-tax-code">Tax code</label><input class="form-input" id="c-tax-code" type="text" name="tax_code"/></div>
+				<div class="form-field"><label class="form-label" for="c-email">Email</label><input class="form-input" id="c-email" type="email" name="email"/></div>
+				<div class="form-field"><label class="form-label" for="c-address">Address</label><input class="form-input" id="c-address" type="text" name="address_line"/></div>
+				<div class="form-field"><label class="form-label" for="c-locality">Locality</label><input class="form-input" id="c-locality" type="text" name="locality"/></div>
+				<div class="form-field"><label class="form-label" for="c-postcode">Post code</label><input class="form-input" id="c-postcode" type="text" name="post_code"/></div>
+				<div class="form-field"><label class="form-label" for="c-country">Country</label><input class="form-input" id="c-country" type="text" name="country" placeholder="ES"/></div>
+				<div class="form-actions"><button type="submit" class="btn btn--primary">Add customer</button></div>
+			</form>
+		</div>
+	</div>
+	if len(rows) == 0 {
+		<div class="empty-stage">
+			<div class="empty-stage__icon"><i class="bx bx-user"></i></div>
+			<div class="empty-stage__title">No customers yet</div>
+		</div>
+	} else {
+		<div class="card card--table">
+			<div class="card__body">
+				<div class="data-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Name</th>
+								<th>Tax ID</th>
+								<th>Email</th>
+								<th>Locality</th>
+								<th>Country</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, c := range rows {
+								<tr>
+									<td>{ c.Name }</td>
+									<td>{ nsStr(c.TaxCountry) } { nsStr(c.TaxCode) }</td>
+									<td>{ nsStr(c.Email) }</td>
+									<td>{ nsStr(c.Locality) }</td>
+									<td>{ nsStr(c.Country) }</td>
+									<td class="table-actions">
+										<button type="button" class="btn-icon" title="Edit" data-on:click__prevent={ dsEditGet("customers", c.ID) }><i class="bx bx-edit admin-icon admin-icon--18"></i></button>
+										<button type="button" class="btn-icon btn-icon--danger" title="Delete" data-on:click={ dsDelete("customers", c.ID, c.Name) }><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ CustomersPage(rows []sqlc.Customer, errMsg string) {
+	@Layout("customers · Ittisal Invoice", "customers") {
+		@CustomersSection(rows, errMsg)
+	}
+}
+
+templ CustomerForm(c sqlc.Customer, errMsg string) {
+	if errMsg != "" {
+		<div class="alert alert--error" role="alert">{ errMsg }</div>
+	}
+	<form method="post" action={ "/customers/" + c.ID } class="form-grid" data-on:submit__prevent={ dsUpdate("customers", c.ID) }>
+		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ c.Name } required/></div>
+		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ nsStr(c.TaxCountry) }/></div>
+		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ nsStr(c.TaxCode) }/></div>
+		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ nsStr(c.Email) }/></div>
+		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ nsStr(c.AddressLine) }/></div>
+		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ nsStr(c.Locality) }/></div>
+		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ nsStr(c.PostCode) }/></div>
+		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ nsStr(c.Country) }/></div>
+		<div class="form-actions"><button type="submit" class="btn btn--primary">Save</button></div>
+	</form>
+}
+
+templ CustomerEditPage(c sqlc.Customer, errMsg string) {
+	@Layout("edit customer · Ittisal Invoice", "customers") {
+		<div class="page-head">
+			<div class="page-head__copy">
+				<h1 class="page-head__title">Edit customer</h1>
+			</div>
+		</div>
+		<div class="card">
+			<div class="card__body">
+				@CustomerForm(c, errMsg)
+			</div>
+		</div>
+	}
+}
+
+templ SuppliersSection(rows []sqlc.Supplier, errMsg string) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">Suppliers</h1>
+			<p class="page-head__subtitle">Issuing parties for invoices</p>
+		</div>
+	</div>
+	if errMsg != "" {
+		<div class="alert alert--error" role="alert">{ errMsg }</div>
+	}
+	<div class="card">
+		<div class="card__header"><span class="card__title">Add supplier</span></div>
+		<div class="card__body">
+			<form method="post" action="/suppliers" class="form-grid" data-on:submit__prevent={ dsPostSuppliers }>
+				<div class="form-field"><label class="form-label" for="s-name">Name</label><input class="form-input" id="s-name" type="text" name="name" required/></div>
+				<div class="form-field"><label class="form-label" for="s-tax-country">Tax country</label><input class="form-input" id="s-tax-country" type="text" name="tax_country" placeholder="ES"/></div>
+				<div class="form-field"><label class="form-label" for="s-tax-code">Tax code</label><input class="form-input" id="s-tax-code" type="text" name="tax_code"/></div>
+				<div class="form-field"><label class="form-label" for="s-email">Email</label><input class="form-input" id="s-email" type="email" name="email"/></div>
+				<div class="form-field"><label class="form-label" for="s-address">Address</label><input class="form-input" id="s-address" type="text" name="address_line"/></div>
+				<div class="form-field"><label class="form-label" for="s-locality">Locality</label><input class="form-input" id="s-locality" type="text" name="locality"/></div>
+				<div class="form-field"><label class="form-label" for="s-postcode">Post code</label><input class="form-input" id="s-postcode" type="text" name="post_code"/></div>
+				<div class="form-field"><label class="form-label" for="s-country">Country</label><input class="form-input" id="s-country" type="text" name="country" placeholder="ES"/></div>
+				<div class="form-actions"><button type="submit" class="btn btn--primary">Add supplier</button></div>
+			</form>
+		</div>
+	</div>
+	if len(rows) == 0 {
+		<div class="empty-stage">
+			<div class="empty-stage__icon"><i class="bx bx-buildings"></i></div>
+			<div class="empty-stage__title">No suppliers yet</div>
+		</div>
+	} else {
+		<div class="card card--table">
+			<div class="card__body">
+				<div class="data-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Name</th>
+								<th>Tax ID</th>
+								<th>Email</th>
+								<th>Locality</th>
+								<th>Country</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, s := range rows {
+								<tr>
+									<td>{ s.Name }</td>
+									<td>{ nsStr(s.TaxCountry) } { nsStr(s.TaxCode) }</td>
+									<td>{ nsStr(s.Email) }</td>
+									<td>{ nsStr(s.Locality) }</td>
+									<td>{ nsStr(s.Country) }</td>
+									<td class="table-actions">
+										<button type="button" class="btn-icon" title="Edit" data-on:click__prevent={ dsEditGet("suppliers", s.ID) }><i class="bx bx-edit admin-icon admin-icon--18"></i></button>
+										<button type="button" class="btn-icon btn-icon--danger" title="Delete" data-on:click={ dsDelete("suppliers", s.ID, s.Name) }><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ SuppliersPage(rows []sqlc.Supplier, errMsg string) {
+	@Layout("suppliers · Ittisal Invoice", "suppliers") {
+		@SuppliersSection(rows, errMsg)
+	}
+}
+
+templ SupplierForm(s sqlc.Supplier, errMsg string) {
+	if errMsg != "" {
+		<div class="alert alert--error" role="alert">{ errMsg }</div>
+	}
+	<form method="post" action={ "/suppliers/" + s.ID } class="form-grid" data-on:submit__prevent={ dsUpdate("suppliers", s.ID) }>
+		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ s.Name } required/></div>
+		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ nsStr(s.TaxCountry) }/></div>
+		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ nsStr(s.TaxCode) }/></div>
+		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ nsStr(s.Email) }/></div>
+		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ nsStr(s.AddressLine) }/></div>
+		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ nsStr(s.Locality) }/></div>
+		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ nsStr(s.PostCode) }/></div>
+		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ nsStr(s.Country) }/></div>
+		<div class="form-actions"><button type="submit" class="btn btn--primary">Save</button></div>
+	</form>
+}
+
+templ SupplierEditPage(s sqlc.Supplier, errMsg string) {
+	@Layout("edit supplier · Ittisal Invoice", "suppliers") {
+		<div class="page-head">
+			<div class="page-head__copy">
+				<h1 class="page-head__title">Edit supplier</h1>
+			</div>
+		</div>
+		<div class="card">
+			<div class="card__body">
+				@SupplierForm(s, errMsg)
+			</div>
+		</div>
+	}
+}
+
+templ ProductsSection(rows []sqlc.Product, errMsg string) {
+	<div class="page-head">
+		<div class="page-head__copy">
+			<h1 class="page-head__title">Products</h1>
+			<p class="page-head__subtitle">Catalog of billable items</p>
+		</div>
+	</div>
+	if errMsg != "" {
+		<div class="alert alert--error" role="alert">{ errMsg }</div>
+	}
+	<div class="card">
+		<div class="card__header"><span class="card__title">Add product</span></div>
+		<div class="card__body">
+			<form method="post" action="/products" class="form-grid" data-on:submit__prevent={ dsPostProducts }>
+				<div class="form-field"><label class="form-label" for="p-ref">Ref</label><input class="form-input" id="p-ref" type="text" name="ref" required/></div>
+				<div class="form-field"><label class="form-label" for="p-name">Name</label><input class="form-input" id="p-name" type="text" name="name" required/></div>
+				<div class="form-field"><label class="form-label" for="p-price">Price</label><input class="form-input" id="p-price" type="text" name="price" placeholder="100.00" required/></div>
+				<div class="form-field"><label class="form-label" for="p-currency">Currency</label><input class="form-input" id="p-currency" type="text" name="currency" value="EUR"/></div>
+				<div class="form-field"><label class="form-label" for="p-unit">Unit</label><input class="form-input" id="p-unit" type="text" name="unit" placeholder="hour"/></div>
+				<div class="form-field"><label class="form-label" for="p-description">Description</label><input class="form-input" id="p-description" type="text" name="description"/></div>
+				<div class="form-actions"><button type="submit" class="btn btn--primary">Add product</button></div>
+			</form>
+		</div>
+	</div>
+	if len(rows) == 0 {
+		<div class="empty-stage">
+			<div class="empty-stage__icon"><i class="bx bx-package"></i></div>
+			<div class="empty-stage__title">No products yet</div>
+		</div>
+	} else {
+		<div class="card card--table">
+			<div class="card__body">
+				<div class="data-table-wrap">
+					<table class="data-table">
+						<thead>
+							<tr>
+								<th>Ref</th>
+								<th>Name</th>
+								<th class="num">Price</th>
+								<th>Unit</th>
+								<th>Description</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, p := range rows {
+								<tr>
+									<td>{ p.Ref }</td>
+									<td>{ p.Name }</td>
+									<td class="num">{ p.Price } { p.Currency }</td>
+									<td>{ nsStr(p.Unit) }</td>
+									<td>{ nsStr(p.Description) }</td>
+									<td class="table-actions">
+										<button type="button" class="btn-icon" title="Edit" data-on:click__prevent={ dsEditGet("products", p.ID) }><i class="bx bx-edit admin-icon admin-icon--18"></i></button>
+										<button type="button" class="btn-icon btn-icon--danger" title="Delete" data-on:click={ dsDelete("products", p.ID, p.Ref) }><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ ProductsPage(rows []sqlc.Product, errMsg string) {
+	@Layout("products · Ittisal Invoice", "products") {
+		@ProductsSection(rows, errMsg)
+	}
+}
+
+templ ProductForm(p sqlc.Product, errMsg string) {
+	if errMsg != "" {
+		<div class="alert alert--error" role="alert">{ errMsg }</div>
+	}
+	<form method="post" action={ "/products/" + p.ID } class="form-grid" data-on:submit__prevent={ dsUpdate("products", p.ID) }>
+		<div class="form-field"><label class="form-label">Ref</label><input class="form-input" type="text" name="ref" value={ p.Ref } required/></div>
+		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ p.Name } required/></div>
+		<div class="form-field"><label class="form-label">Price</label><input class="form-input" type="text" name="price" value={ p.Price } required/></div>
+		<div class="form-field"><label class="form-label">Currency</label><input class="form-input" type="text" name="currency" value={ p.Currency }/></div>
+		<div class="form-field"><label class="form-label">Unit</label><input class="form-input" type="text" name="unit" value={ nsStr(p.Unit) }/></div>
+		<div class="form-field"><label class="form-label">Description</label><input class="form-input" type="text" name="description" value={ nsStr(p.Description) }/></div>
+		<div class="form-actions"><button type="submit" class="btn btn--primary">Save</button></div>
+	</form>
+}
+
+templ ProductEditPage(p sqlc.Product, errMsg string) {
+	@Layout("edit product · Ittisal Invoice", "products") {
+		<div class="page-head">
+			<div class="page-head__copy">
+				<h1 class="page-head__title">Edit product</h1>
+			</div>
+		</div>
+		<div class="card">
+			<div class="card__body">
+				@ProductForm(p, errMsg)
+			</div>
+		</div>
+	}
+}

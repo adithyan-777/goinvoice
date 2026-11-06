@@ -1,0 +1,73 @@
+// Package ar provides additional templates and helper methods
+// for the Argentine tax regime.
+package ar
+
+import (
+	"slices"
+
+	arca "github.com/invopop/gobl.ar.arca/addon"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/org"
+)
+
+// vatStatusLegends maps ar-arca-vat-status codes to their official legend text
+// as defined by RG 1415.
+var vatStatusLegends = map[string]string{
+	"1":  "IVA RESPONSABLE INSCRIPTO",
+	"4":  "IVA SUJETO EXENTO",
+	"5":  "CONSUMIDOR FINAL",
+	"6":  "RESPONSABLE MONOTRIBUTO",
+	"7":  "SUJETO NO CATEGORIZADO",
+	"8":  "PROVEEDOR DEL EXTERIOR",
+	"9":  "CLIENTE DEL EXTERIOR",
+	"10": "IVA LIBERADO – LEY Nº 19.640",
+	"13": "MONOTRIBUTISTA SOCIAL",
+	"15": "IVA NO ALCANZADO",
+	"16": "MONOTRIBUTO TRABAJADOR INDEPENDIENTE PROMOVIDO",
+}
+
+func arcaVATLegend(doc internal.Document, party *org.Party, role string) string {
+	if doc == nil || party == nil {
+		return ""
+	}
+	ext := doc.GetExt()
+	if ext.IsZero() {
+		return ""
+	}
+	dt := ext.Get(arca.ExtKeyDocType)
+	if dt.IsEmpty() {
+		return ""
+	}
+
+	if role == "supplier" {
+		return supplierLegend(doc, cbc.Code(dt.String()))
+	}
+	return customerLegend(party, cbc.Code(dt.String()))
+}
+
+func supplierLegend(_ internal.Document, docType cbc.Code) string {
+	switch {
+	case slices.Contains(arca.DocTypesA, docType),
+		slices.Contains(arca.DocTypesB, docType),
+		slices.Contains(arca.DocTypesT, docType):
+		return "IVA RESPONSABLE INSCRIPTO"
+	case slices.Contains(arca.DocTypesC, docType):
+		return "RESPONSABLE MONOTRIBUTO"
+	}
+	return ""
+}
+
+func customerLegend(party *org.Party, docType cbc.Code) string {
+	if slices.Contains(arca.DocTypesT, docType) {
+		return "CLIENTE DEL EXTERIOR"
+	}
+	if party.Ext.IsZero() {
+		return ""
+	}
+	vs := party.Ext.Get(arca.ExtKeyVATStatus)
+	if vs.IsEmpty() {
+		return ""
+	}
+	return vatStatusLegends[vs.String()]
+}

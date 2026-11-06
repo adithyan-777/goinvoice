@@ -1,0 +1,373 @@
+package bill
+
+import (
+	"fmt"
+
+	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/l10n"
+	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/schema"
+	"github.com/invopop/gobl/tax"
+)
+
+// billable defines the methods required to be able to perform calculations and
+// other operations on a bill document with a common basic structure.
+type billable interface {
+	// From tax.Regime
+	RegimeDef() *tax.RegimeDef
+
+	// From tax.Tags
+	HasTags(tags ...cbc.Key) bool
+	GetTags() []cbc.Key
+
+	// Public methods
+	Calculate() error
+	GetCurrency() currency.Code
+	GetExchangeRates() []*currency.ExchangeRate
+
+	// private methods
+	getIssueDate() cal.Date
+	getValueDate() *cal.Date
+	getTax() *Tax
+	getPreceding() []*org.DocumentRef
+	getCustomer() *org.Party
+	getLines() []*Line
+	getDiscounts() []*Discount
+	getCharges() []*Charge
+	getPaymentDetails() *PaymentDetails
+	getTotals() *Totals
+	getComplements() []*schema.Object
+
+	// private setters
+	setIssueDate(cal.Date)
+	setCurrency(currency.Code)
+	setTax(*Tax)
+	setTotals(*Totals)
+}
+
+// ensureCalculated performs a full calculation on documents that have not been
+// prepared yet.
+func ensureCalculated(doc billable) error {
+	if isCalculated(doc) {
+		return nil
+	}
+	return doc.Calculate()
+}
+
+// isCalculated reports whether the document holds calculator output. The
+// rounding amount is the only total a caller provides, and every line that can
+// be priced is given a total, so a document missing either was assembled by
+// hand and its amounts cannot be read. Totals invented in full are
+// indistinguishable from calculated ones and are taken at face value.
+func isCalculated(doc billable) bool {
+	t := doc.getTotals()
+	if t == nil {
+		return false
+	}
+	rest := *t
+	rest.Rounding = nil
+	if rest == (Totals{}) {
+		return false
+	}
+	for _, l := range doc.getLines() {
+		if l == nil || l.Total != nil {
+			continue
+		}
+		if len(l.Breakdown) > 0 || (l.Item != nil && (l.Item.Price != nil || l.Item.List != nil)) {
+			return false
+		}
+	}
+	return true
+}
+
+func calculate(doc billable) error {
+	r := doc.RegimeDef() // may be nil!
+	date := calculateIssueDateAndTime(r, doc)
+
+	// Convert empty or invalid currency to the regime's currency
+	if doc.GetCurrency() == currency.CodeEmpty || doc.GetCurrency().Def() == nil {
+		if r == nil {
+			return fmt.Errorf("currency: missing or invalid")
+		}
+		doc.setCurrency(r.Currency)
+	}
+	cur := doc.GetCurrency()
+
+	if doc.HasTags(tax.TagBypass) {
+		// Stop all further calculations
+		return nil
+	}
+
+	t := doc.getTotals()
+	// Prepare the totals we'll need with amounts based on currency
+	if t == nil {
+		t = new(Totals)
+	}
+	zero := cur.Def().Zero()
+	t.reset(zero)
+
+	// Figure out rounding rules and if prices include tax early
+	var pit cbc.Code
+	if tx := doc.getTax(); tx != nil {
+		pit = tx.PricesInclude
+	}
+	rr := roundingRule(doc)
+
+	// Do we need to deal with the customer-rates tag?
+	if doc.HasTags(tax.TagCustomerRates) {
+		applyCustomerRates(doc)
+	}
+
+	// Complements
+	if err := calculateComplements(doc.getComplements()); err != nil {
+		return fmt.Errorf("complements: %w", err)
+	}
+
+	// Preceding
+	calculateOrgDocumentRefs(doc.getPreceding(), cur, rr)
+
+	// Lines
+	if err := calculateLines(doc.getLines(), cur, doc.GetExchangeRates(), rr); err != nil {
+		return fmt.Errorf("lines: %w", err)
+	}
+	t.Sum = calculateLineSum(doc.getLines(), cur)
+	t.Total = t.Sum
+
+	// Discount Lines
+	calculateDiscounts(doc.getDiscounts(), cur, t.Sum, rr)
+	if discounts := calculateDiscountSum(doc.getDiscounts(), cur); discounts != nil {
+		t.Discount = discounts
+		t.Total = t.Total.Subtract(*discounts)
+	}
+
+	// Charge Lines
+	calculateCharges(doc.getCharges(), cur, t.Sum, rr)
+	if charges := calculateChargeSum(doc.getCharges(), cur); charges != nil {
+		t.Charge = charges
+		t.Total = t.Total.Add(*charges)
+	}
+
+	tls := prepareTaxableLines(doc)
+	if len(tls) == 0 {
+		// This applies for orders and deliveries that might not have
+		// any pricing details.
+		doc.setTotals(nil)
+		return nil
+	}
+
+	// Now figure out the tax totals
+	t.Taxes = new(tax.Total)
+	tc := &tax.TotalCalculator{
+		Currency: doc.GetCurrency(),
+		Rounding: rr,
+		Country:  r.GetCountry(),
+		Date:     *date,
+		Lines:    tls,
+		Includes: pit,
+	}
+	if err := tc.Calculate(t.Taxes); err != nil {
+		return err
+	}
+
+	// Remove any included taxes from the total.
+	ct := t.Taxes.Category(pit)
+	if ct != nil {
+		ti := ct.Amount
+		t.TaxIncluded = &ti
+		t.Total = t.Total.Subtract(ti)
+	}
+
+	// Calculate the total with *all* the taxes.
+	t.Tax = t.Taxes.Sum
+	t.TotalWithTax = t.Total.Add(t.Tax)
+	if t.Taxes.Retained != nil {
+		t.RetainedTax = t.Taxes.Retained
+	}
+	t.Payable = t.TotalWithTax
+	if t.RetainedTax != nil {
+		t.Payable = t.Payable.Subtract(*t.RetainedTax)
+	}
+	// Remove taxes object if it doesn't contain any categories
+	if len(t.Taxes.Categories) == 0 {
+		t.Taxes = nil
+	}
+
+	roundTotalsAndPreparePayments(doc, cur, t)
+
+	return nil
+}
+
+func roundTotalsAndPreparePayments(doc billable, cur currency.Code, t *Totals) {
+	zero := cur.Def().Zero()
+	// Before calculating the amount due and advances, we need to round
+	// everything. Payments reflect real monetary values and can never
+	// be fractions of the currency.
+	roundLines(doc.getLines())
+	roundDiscounts(doc.getDiscounts(), cur)
+	roundCharges(doc.getCharges(), cur)
+	t.round(zero)
+
+	if t.Rounding != nil {
+		// BT-144 in EN16931
+		t.Payable = t.Payable.Add(*t.Rounding)
+	}
+	if pd := doc.getPaymentDetails(); pd != nil {
+		pd.calculateAdvances(zero, t.Payable, t.Taxes)
+		// Deal with advances, if any. Note that in the current
+		// implementation multiple percentage advances are likely to
+		// suffer rounding errors. It usually better for users to use
+		// fixed payment amounts if possible.
+		if t.Advances = pd.totalAdvance(zero); t.Advances != nil {
+			v := t.Payable.Subtract(*t.Advances)
+			t.Due = &v
+		}
+		// Calculate any due date amounts from what remains to be paid
+		due := t.Payable
+		if t.Due != nil {
+			due = *t.Due
+		}
+		pd.Terms.CalculateDues(zero, due)
+	}
+	doc.setTotals(t)
+}
+
+func prepareTaxableLines(doc billable) []tax.TaxableLine {
+	// Build list of taxable lines
+	tls := make([]tax.TaxableLine, 0)
+	for _, l := range doc.getLines() {
+		if l != nil && l.Total != nil {
+			tls = append(tls, l)
+		}
+	}
+	for _, l := range doc.getDiscounts() {
+		if l != nil {
+			tls = append(tls, l)
+		}
+	}
+	for _, l := range doc.getCharges() {
+		if l != nil && !l.Informative {
+			tls = append(tls, l)
+		}
+	}
+	return tls
+}
+
+func calculateIssueDateAndTime(r *tax.RegimeDef, doc billable) *cal.Date {
+	if doc.getIssueDate().IsZero() {
+		doc.setIssueDate(cal.TodayIn(r.TimeLocation()))
+	}
+
+	// Get the date used for tax calculations
+	date := doc.getValueDate()
+	if date == nil {
+		id := doc.getIssueDate()
+		date = &id
+	}
+
+	return date
+}
+
+func calculateOrgDocumentRefs(drs []*org.DocumentRef, cur currency.Code, rr cbc.Key) {
+	for _, drs := range drs {
+		if drs == nil {
+			continue
+		}
+		if drs.Currency != currency.CodeEmpty {
+			cur = drs.Currency
+		}
+		drs.Calculate(cur, rr)
+	}
+}
+
+func canRemoveIncludedTaxes(doc billable) bool {
+	if doc.HasTags(tax.TagBypass) {
+		// Calculations are skipped entirely.
+		return false
+	}
+	return doc.getTax() != nil && !doc.getTax().PricesInclude.IsEmpty()
+}
+
+func removeIncludedTaxes(doc billable) error {
+	if !canRemoveIncludedTaxes(doc) {
+		return nil
+	}
+	tpi := doc.getTax().PricesInclude
+
+	// The original totals are needed to maintain the amount payable.
+	if err := ensureCalculated(doc); err != nil {
+		return err
+	}
+	if doc.getTotals() == nil {
+		return nil
+	}
+	payable := doc.getTotals().Payable
+
+	doc.setTotals(new(Totals))
+	lines := doc.getLines()
+	for i, l := range doc.getLines() {
+		lines[i] = removeLineIncludedTaxes(l, tpi)
+	}
+
+	discounts := doc.getDiscounts()
+	if len(discounts) > 0 {
+		for i, l := range discounts {
+			discounts[i] = l.removeIncludedTaxes(tpi)
+		}
+	}
+	charges := doc.getCharges()
+	if len(charges) > 0 {
+		for i, l := range charges {
+			charges[i] = l.removeIncludedTaxes(tpi)
+		}
+	}
+
+	tx := doc.getTax()
+	tx.PricesInclude = ""
+
+	// Tax-exclusive prices need more decimal places than the currency to
+	// represent the original amounts, so a currency rounding rule inherited
+	// from the regime is replaced with precise. A rule set on the document
+	// itself is respected.
+	if tx.Rounding == "" && doc.RegimeDef().GetRoundingRule() == tax.RoundingRuleCurrency {
+		tx.Rounding = tax.RoundingRulePrecise
+	}
+
+	// Account for any rounding errors that we just can't handle
+	return recalculateKeepingPayable(doc, payable)
+}
+
+func applyCustomerRates(doc billable) {
+	if doc.getCustomer() == nil || doc.getCustomer().TaxID == nil {
+		return
+	}
+	country := doc.getCustomer().TaxID.Country
+	for _, l := range doc.getLines() {
+		addCountryToTaxes(l.Taxes, country)
+	}
+	for _, d := range doc.getDiscounts() {
+		addCountryToTaxes(d.Taxes, country)
+	}
+	for _, c := range doc.getCharges() {
+		addCountryToTaxes(c.Taxes, country)
+	}
+}
+
+func addCountryToTaxes(ts tax.Set, country l10n.TaxCountryCode) {
+	for _, t := range ts {
+		t.Country = country
+	}
+}
+
+func calculateComplements(comps []*schema.Object) error {
+	for _, c := range comps {
+		if c == nil {
+			continue
+		}
+		if err := c.Calculate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}

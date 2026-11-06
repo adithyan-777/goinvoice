@@ -1,0 +1,98 @@
+package t
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/num"
+)
+
+// T wraps around the i18n T method
+templ T(key string, args ...any) {
+	{ i18n.T(ctx, key, args...) }
+}
+
+// N wraps around the i18n N method
+templ N(key string, n int, args ...any) {
+	{ i18n.N(ctx, key, n, args...) }
+}
+
+// L localizes a GOBL num.Amount, num.Percentage, cal.DateTime, or cal.Date according
+// to the rules defined in the context.
+templ L(a any) {
+	{ Localize(ctx, a) }
+}
+
+// LM localizes amounts using the currency and formatter defined in the context.
+templ LM(a num.Amount) {
+	{ LocalizeMoney(ctx, a) }
+}
+
+// LC localizes and amount using the formatting defined by the specified currency,
+// ignoring any formatter defined in the context.
+templ LC(a num.Amount, cur currency.Code) {
+	{ LocalizeCurrency(ctx, a, cur) }
+}
+
+// LCD localizes and amount using the formatting defined by the specified currency,
+// and uses the disembiguate symbol.
+templ LCD(a num.Amount, cur currency.Code) {
+	{ LocalizeCurrency(ctx, a, cur, currency.WithDisambiguateSymbol()) }
+}
+
+// Scope helps set a scope around the context
+templ Scope(key string) {
+	if ctx = i18n.WithScope(ctx, key); true {
+		{ children... }
+	}
+}
+
+// Localize returns a localized string representation of the given value.
+func Localize(ctx context.Context, a any) string {
+	val := reflect.ValueOf(a)
+	if val.Kind() == reflect.Ptr {
+		if val.IsNil() {
+			return ""
+		}
+		a = val.Elem().Interface()
+	}
+	switch v := a.(type) {
+	case num.Amount:
+		nf := numFormatter(ctx).WithoutUnit()
+		return nf.Amount(v)
+	case num.Percentage:
+		nf := numFormatter(ctx).WithoutUnit()
+		return nf.Percentage(v)
+	case cal.DateTime:
+		cf := calFormatter(ctx)
+		t := v.In(cf.Location)
+		return t.Format(cf.Date) + internal.DateTimeSeparator + t.Format(cf.Time)
+	case cal.Date:
+		cf := calFormatter(ctx)
+		return v.Time().Format(cf.Date)
+	default:
+		return fmt.Sprintf("!(UNKOWN TYPE %T)", a)
+	}
+}
+
+// LocalizeMoney will localise a monetary amount using the context's currency
+// and formatter.
+func LocalizeMoney(ctx context.Context, a num.Amount) string {
+	f := numFormatter(ctx)
+	return f.Amount(a)
+}
+
+// LocalizeCurrency will produce a localized string representation of the given
+// amount for the provided currency.
+func LocalizeCurrency(ctx context.Context, a num.Amount, cur currency.Code, opts ...currency.FormatOption) string {
+	f := cur.Def().Formatter(opts...)
+	if o := internal.Options(ctx); o != nil && o.NumFormatter != nil {
+		f = o.NumFormatter.WithUnit(f.Unit)
+	}
+	return f.Amount(a)
+}

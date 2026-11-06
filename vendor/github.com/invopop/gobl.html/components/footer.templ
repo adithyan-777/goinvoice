@@ -1,0 +1,67 @@
+package components
+
+import (
+	"context"
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl"
+	"github.com/invopop/gobl.html/components/images"
+	"github.com/invopop/gobl.html/components/regimes/co"
+	"github.com/invopop/gobl.html/internal"
+	"strings"
+)
+
+templ footerPrint(env *gobl.Envelope) {
+	<footer class="print">
+		@co.DIANQR(env)
+		@footerNotes(env)
+		@footerPage()
+		@footerGOBLLogo()
+	</footer>
+}
+
+templ footerScreen(env *gobl.Envelope) {
+	<footer class="screen">
+		@footerNotes(env)
+		@footerGOBLLogo()
+	</footer>
+}
+
+templ footerPage() {
+	<span class="page">
+		@templ.Raw(pageNumber(ctx))
+	</span>
+}
+
+templ footerNotes(env *gobl.Envelope) {
+	if txt := footerNotesText(ctx, env); txt != "" {
+		<span class="notes">
+			@templ.Raw(txt)
+		</span>
+	}
+}
+
+templ footerGOBLLogo() {
+	<div class="gobl-logo">
+		<a href="https://gobl.org">
+			@images.GOBL()
+		</a>
+	</div>
+}
+
+func pageNumber(ctx context.Context) string {
+	txt := i18n.T(ctx, "page", i18n.M{
+		"page":  `<span class="page-number">1</span>`,
+		"count": `<span class="pages-number">1</span>`,
+	})
+	return txt
+}
+
+func footerNotesText(ctx context.Context, env *gobl.Envelope) string {
+	out := make([]string, 0)
+	if opts := internal.Options(ctx); opts.Notes != "" {
+		out = append(out, opts.Notes)
+	} else if env.Head != nil && env.Head.Notes != "" {
+		out = append(out, env.Head.Notes)
+	}
+	return strings.Join(out, " &middot; ")
+}

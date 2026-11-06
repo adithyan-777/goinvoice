@@ -1,0 +1,48 @@
+/* Increase bottom margin to fit the QR code inside the page footer */
+@page {
+  margin-bottom: 48mm;
+}
+
+footer.print {
+  height: auto;
+}
+
+.dian-qr {
+  display: flex;
+  align-items: flex-end;
+  font-family: "Geist Mono", monospace;
+  font-size: 7pt;
+  line-height: 1.45;
+  text-align: left;
+  margin-bottom: 4mm;
+}
+
+.dian-qr .image {
+  margin-right: 4mm;
+}
+
+.dian-qr .text {
+  padding-bottom: 0.5mm;
+}
+
+.dian-qr .provider {
+  text-transform: uppercase;
+}
+
+.dian-qr .codes {
+  margin-top: 3mm;
+}
+
+.dian-qr .value {
+  word-break: break-all;
+}
+
+.dian-qr .label {
+  font-weight: 550;
+  text-transform: uppercase;
+}
+
+.dian-qr img {
+  width: 24mm;
+  height: 24mm;
+}

@@ -1,7 +1,7 @@
-# goinvoice
+# Ittisal Invoice
 
-An e-invoicing service built with [Gin](https://gin-gonic.com), [GOBL](https://github.com/invopop/gobl)
-and [gobl.html](https://github.com/invopop/gobl.html).
+An e-invoicing service built with [Chi](https://go-chi.io), [templ](https://templ.guide),
+[GOBL](https://github.com/invopop/gobl) and [gobl.html](https://github.com/invopop/gobl.html).
 
 You POST the business intent of an invoice (who, what, at what price, which taxes).
 GOBL fills in the truth: computed totals, per-rate tax breakdown, regime-based validation
@@ -11,18 +11,57 @@ envelope into standalone printable HTML you can convert to PDF with any headless
 ## Architecture
 
 ```
-cmd/server/          entrypoint (Gin)
-internal/handlers/   HTTP routes
+cmd/server/          entrypoint (Chi)
+internal/handlers/   HTTP routes + templ pages (index.templ → index_templ.go)
 internal/invoicer/   GOBL pipeline: build → calculate → validate → summarize → render
 internal/store/      in-memory envelope store (swap with Postgres later)
 examples/            sample request bodies
 ```
+
+`GET /` is rendered with templ (`IndexPage`); `GET /invoices/{id}/html`
+delegates to `gobl.html` (itself templ-based) for the printable invoice document.
+`GET /customers`, `/suppliers` and `/products` render the seeded catalog
+tables (`catalog.templ`); demo rows come from `db/migrations/00003_*` and
+demo invoices are built via GOBL on first boot (`internal/seed`).
+
+Design: the app shell (sidebar, topbar, cards, tables, modal drawer,
+dark mode, theme engine) follows `../qatar/pattika` structure and
+conventions (`internal/handlers/static/pattika/`, see its `AGENTS.md`);
+goinvoice wears its own identity on top — deep-teal on warm paper/pine
+ink (`static/goinvoice.css` token overrides plus KPI stats, series
+badges and tabular money figures).
+`POST /products` creates a product (JSON API or the form on `/products`;
+duplicate `ref` → `409`). `POST /products/{id}` updates,
+`DELETE /products/{id}` deletes (`204`); the list page links an edit form
+per row with inline delete. Customers and suppliers expose the same
+CRUD shape under `/customers` and `/suppliers` (unique `tax_code` → `409`).
+
+Pages are SPA-like via [Datastar](https://data-star.dev) v1
+(`internal/handlers/static/datastar.js`, vendored, no CDN): nav swaps
+`#main` in place, edits open in a modal, and creates/updates/deletes
+re-render the section without reloads. The same endpoints serve plain
+browsers (full pages + PRG redirects) and JSON API clients — Datastar
+requests are detected by their `Accept: text/event-stream` header and get
+HTML fragments with `Datastar-Selector`/`Datastar-Mode` patch headers.
 
 ## Run
 
 ```bash
 go run ./cmd/server            # listen on :8080
 ```
+
+## Dev
+
+templ files must be regenerated after editing (generated `*_templ.go` is committed):
+
+```bash
+go install github.com/a-h/templ/cmd/templ@v0.3.1001  # must match gobl.html's templ
+templ generate
+# or: go generate ./...
+```
+
+Pinned to templ v0.3.1001 — that's what `gobl.html` v0.135.0 was generated with;
+newer templ runtimes break its generated code (`templ.JoinURLErrs` undefined).
 
 ## API
 
@@ -53,15 +92,17 @@ curl -s -X POST http://localhost:8080/invoices \
   -d @examples/sample-invoice.json
 ```
 
-### Read — `GET /invoices`, `GET /invoices/:id`, `GET /invoices/:id/envelope.json`
+### Read — `GET /invoices`, `GET /invoices/{id}`, `GET /invoices/{id}/envelope.json`
 
-List returns compact summaries (id, code, currency, totals, digest); `/:id` returns the
+List returns compact summaries (id, code, currency, totals, digest); `/{id}` returns the
 full envelope; `/envelope.json` downloads it.
 
-### Render — `GET /invoices/:id/html[?...]`
+### Render — `GET /invoices/{id}/html[?...]`
 
-Returns `text/html` with stylesheets embedded — no network needed, safe to feed to
-headless Chrome/Playwright for PDF.
+Returns `text/html` with stylesheets embedded plus a floating
+**Download PDF** button. Clicking it converts the invoice to PDF entirely
+in the browser via [html2pdf.js](https://cdnjs.com/libraries/html2pdf.js)
+(html2pdf.bundle from CDN) — no server-side converter needed.
 
 | Query param    | Effect                                     |
 | -------------- | ------------------------------------------ |
@@ -73,7 +114,7 @@ headless Chrome/Playwright for PDF.
 curl -s "http://localhost:8080/invoices/$ID/html?locale=es&watermark=DRAFT" -o inv.html
 ```
 
-### Delete — `DELETE /invoices/:id`
+### Delete — `DELETE /invoices/{id}`
 
 Removes the entry (no legal cancellation semantics — use GOBL credit notes for that).
 
@@ -93,6 +134,5 @@ Removes the entry (no legal cancellation semantics — use GOBL credit notes for
 
 - Signing: `env.Sign(key)` requires an invoice `code` and produces JWS signatures.
 - Postgres persistence (pgx + golang-migrate) behind the same `store` interface.
-- `/invoices/:id/pdf` via chromedp.
 - Country format conversion (CFDI, FatturaPA, VERI*FACTU, …) — in the ES case the
   VERI*FACTU addon is already validated against the invoice automatically.

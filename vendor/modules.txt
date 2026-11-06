@@ -1,0 +1,324 @@
+# cloud.google.com/go v0.121.3
+## explicit; go 1.23.0
+cloud.google.com/go/civil
+# github.com/Masterminds/semver/v3 v3.3.1
+## explicit; go 1.21
+github.com/Masterminds/semver/v3
+# github.com/a-h/templ v0.3.1001
+## explicit; go 1.23.0
+github.com/a-h/templ
+github.com/a-h/templ/runtime
+github.com/a-h/templ/safehtml
+# github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
+## explicit; go 1.13
+github.com/asaskevich/govalidator
+# github.com/bahlo/generic-list-go v0.2.0
+## explicit; go 1.18
+github.com/bahlo/generic-list-go
+# github.com/buger/jsonparser v1.1.2
+## explicit; go 1.13
+github.com/buger/jsonparser
+# github.com/dustin/go-humanize v1.1.0
+## explicit; go 1.21
+github.com/dustin/go-humanize
+# github.com/expr-lang/expr v1.17.8
+## explicit; go 1.18
+github.com/expr-lang/expr
+github.com/expr-lang/expr/ast
+github.com/expr-lang/expr/builtin
+github.com/expr-lang/expr/checker
+github.com/expr-lang/expr/checker/nature
+github.com/expr-lang/expr/compiler
+github.com/expr-lang/expr/conf
+github.com/expr-lang/expr/file
+github.com/expr-lang/expr/internal/deref
+github.com/expr-lang/expr/internal/ring
+github.com/expr-lang/expr/optimizer
+github.com/expr-lang/expr/parser
+github.com/expr-lang/expr/parser/lexer
+github.com/expr-lang/expr/parser/operator
+github.com/expr-lang/expr/parser/utils
+github.com/expr-lang/expr/patcher
+github.com/expr-lang/expr/types
+github.com/expr-lang/expr/vm
+github.com/expr-lang/expr/vm/runtime
+# github.com/go-chi/chi/v5 v5.5.0
+## explicit; go 1.24
+github.com/go-chi/chi/v5
+github.com/go-chi/chi/v5/middleware
+# github.com/go-jose/go-jose/v4 v4.1.6
+## explicit; go 1.24.0
+github.com/go-jose/go-jose/v4
+github.com/go-jose/go-jose/v4/cipher
+github.com/go-jose/go-jose/v4/json
+# github.com/google/uuid v1.6.0
+## explicit
+github.com/google/uuid
+# github.com/invopop/ctxi18n v0.9.0
+## explicit; go 1.21
+github.com/invopop/ctxi18n/i18n
+# github.com/invopop/gobl v0.508.0
+## explicit; go 1.25.0
+github.com/invopop/gobl
+github.com/invopop/gobl/addons
+github.com/invopop/gobl/addons/de/xrechnung
+github.com/invopop/gobl/addons/de/zugferd
+github.com/invopop/gobl/addons/es/facturae
+github.com/invopop/gobl/addons/es/sii
+github.com/invopop/gobl/addons/es/tbai
+github.com/invopop/gobl/addons/es/verifactu
+github.com/invopop/gobl/addons/eu/en16931
+github.com/invopop/gobl/addons/fr/choruspro
+github.com/invopop/gobl/addons/fr/facturx
+github.com/invopop/gobl/addons/gr/mydata
+github.com/invopop/gobl/addons/it/ticket
+github.com/invopop/gobl/bill
+github.com/invopop/gobl/c14n
+github.com/invopop/gobl/cal
+github.com/invopop/gobl/catalogues
+github.com/invopop/gobl/catalogues/cef
+github.com/invopop/gobl/catalogues/iso
+github.com/invopop/gobl/catalogues/untdid
+github.com/invopop/gobl/cbc
+github.com/invopop/gobl/currency
+github.com/invopop/gobl/data
+github.com/invopop/gobl/dsig
+github.com/invopop/gobl/head
+github.com/invopop/gobl/i18n
+github.com/invopop/gobl/l10n
+github.com/invopop/gobl/norm
+github.com/invopop/gobl/note
+github.com/invopop/gobl/num
+github.com/invopop/gobl/org
+github.com/invopop/gobl/pay
+github.com/invopop/gobl/pkg/changes
+github.com/invopop/gobl/pkg/here
+github.com/invopop/gobl/pkg/luhn
+github.com/invopop/gobl/regimes
+github.com/invopop/gobl/regimes/ae
+github.com/invopop/gobl/regimes/ar
+github.com/invopop/gobl/regimes/at
+github.com/invopop/gobl/regimes/au
+github.com/invopop/gobl/regimes/be
+github.com/invopop/gobl/regimes/br
+github.com/invopop/gobl/regimes/bs
+github.com/invopop/gobl/regimes/ca
+github.com/invopop/gobl/regimes/ch
+github.com/invopop/gobl/regimes/co
+github.com/invopop/gobl/regimes/cr
+github.com/invopop/gobl/regimes/de
+github.com/invopop/gobl/regimes/dk
+github.com/invopop/gobl/regimes/es
+github.com/invopop/gobl/regimes/fi
+github.com/invopop/gobl/regimes/fr
+github.com/invopop/gobl/regimes/gb
+github.com/invopop/gobl/regimes/gr
+github.com/invopop/gobl/regimes/ie
+github.com/invopop/gobl/regimes/in
+github.com/invopop/gobl/regimes/it
+github.com/invopop/gobl/regimes/mx
+github.com/invopop/gobl/regimes/nl
+github.com/invopop/gobl/regimes/no
+github.com/invopop/gobl/regimes/nz
+github.com/invopop/gobl/regimes/pe
+github.com/invopop/gobl/regimes/pl
+github.com/invopop/gobl/regimes/pt
+github.com/invopop/gobl/regimes/sa
+github.com/invopop/gobl/regimes/se
+github.com/invopop/gobl/regimes/sg
+github.com/invopop/gobl/regimes/sk
+github.com/invopop/gobl/regimes/us
+github.com/invopop/gobl/rules
+github.com/invopop/gobl/rules/is
+github.com/invopop/gobl/schema
+github.com/invopop/gobl/tax
+github.com/invopop/gobl/uuid
+# github.com/invopop/gobl.ar.arca v0.0.3
+## explicit; go 1.25.0
+github.com/invopop/gobl.ar.arca/addon
+# github.com/invopop/gobl.br.nfe v0.0.4
+## explicit; go 1.25.0
+github.com/invopop/gobl.br.nfe/addon
+# github.com/invopop/gobl.br.nfse v0.0.2
+## explicit; go 1.25.0
+github.com/invopop/gobl.br.nfse/addon
+# github.com/invopop/gobl.co.dian v0.0.3
+## explicit; go 1.25.0
+github.com/invopop/gobl.co.dian/addon
+# github.com/invopop/gobl.dev v0.507.3
+## explicit; go 1.25.0
+github.com/invopop/gobl.dev/bundle
+# github.com/invopop/gobl.dk.oioubl v0.0.9
+## explicit; go 1.25.0
+github.com/invopop/gobl.dk.oioubl/addon
+# github.com/invopop/gobl.fi.finvoice v0.0.2
+## explicit; go 1.25.0
+github.com/invopop/gobl.fi.finvoice/addon
+# github.com/invopop/gobl.fr.ctc v0.0.8
+## explicit; go 1.25.0
+github.com/invopop/gobl.fr.ctc/addon
+github.com/invopop/gobl.fr.ctc/addon/dgfip
+github.com/invopop/gobl.fr.ctc/addon/flow10
+github.com/invopop/gobl.fr.ctc/addon/flow2
+github.com/invopop/gobl.fr.ctc/addon/flow6
+# github.com/invopop/gobl.html v0.135.0
+## explicit; go 1.25.0
+github.com/invopop/gobl.html
+github.com/invopop/gobl.html/assets
+github.com/invopop/gobl.html/components
+github.com/invopop/gobl.html/components/assets
+github.com/invopop/gobl.html/components/bill
+github.com/invopop/gobl.html/components/images
+github.com/invopop/gobl.html/components/note
+github.com/invopop/gobl.html/components/org
+github.com/invopop/gobl.html/components/regimes/ar
+github.com/invopop/gobl.html/components/regimes/co
+github.com/invopop/gobl.html/components/regimes/es
+github.com/invopop/gobl.html/components/regimes/gr
+github.com/invopop/gobl.html/components/regimes/it
+github.com/invopop/gobl.html/components/regimes/mx
+github.com/invopop/gobl.html/components/regimes/pl
+github.com/invopop/gobl.html/components/regimes/pt
+github.com/invopop/gobl.html/components/regimes/sa
+github.com/invopop/gobl.html/components/regimes/sg
+github.com/invopop/gobl.html/components/t
+github.com/invopop/gobl.html/components/taxid
+github.com/invopop/gobl.html/components/utils
+github.com/invopop/gobl.html/internal
+github.com/invopop/gobl.html/layout
+github.com/invopop/gobl.html/locales
+# github.com/invopop/gobl.it.sdi v0.81.0
+## explicit; go 1.25.0
+github.com/invopop/gobl.it.sdi/addon
+# github.com/invopop/gobl.mx.cfdi v0.64.0
+## explicit; go 1.25.0
+github.com/invopop/gobl.mx.cfdi/addon
+# github.com/invopop/gobl.pl.ksef v0.45.0
+## explicit; go 1.25.0
+github.com/invopop/gobl.pl.ksef/addon
+# github.com/invopop/gobl.pt.saft v0.0.8
+## explicit; go 1.25.0
+github.com/invopop/gobl.pt.saft/addon
+# github.com/invopop/gobl.sa.zatca v0.0.4
+## explicit; go 1.24.0
+github.com/invopop/gobl.sa.zatca/addon
+github.com/invopop/gobl.sa.zatca/catalogues/vatexsa
+github.com/invopop/gobl.sa.zatca/data
+# github.com/invopop/jsonschema v0.14.0
+## explicit; go 1.24
+github.com/invopop/jsonschema
+# github.com/invopop/yaml v0.3.1
+## explicit; go 1.14
+github.com/invopop/yaml
+# github.com/joho/godotenv v1.5.1
+## explicit; go 1.12
+github.com/joho/godotenv
+# github.com/magefile/mage v1.17.2
+## explicit; go 1.18
+github.com/magefile/mage/mg
+github.com/magefile/mage/sh
+# github.com/mattn/go-isatty v0.0.24
+## explicit; go 1.20
+github.com/mattn/go-isatty
+# github.com/mfridman/interpolate v0.0.2
+## explicit; go 1.19
+github.com/mfridman/interpolate
+# github.com/ncruces/go-strftime v1.1.0
+## explicit; go 1.24
+github.com/ncruces/go-strftime
+# github.com/pb33f/ordered-map/v2 v2.3.1
+## explicit; go 1.24
+github.com/pb33f/ordered-map/v2
+# github.com/piglig/go-qr v0.2.4
+## explicit; go 1.18
+github.com/piglig/go-qr
+# github.com/pressly/goose/v3 v3.29.0
+## explicit; go 1.26.0
+github.com/pressly/goose/v3
+github.com/pressly/goose/v3/database
+github.com/pressly/goose/v3/database/dialect
+github.com/pressly/goose/v3/internal/controller
+github.com/pressly/goose/v3/internal/dialects
+github.com/pressly/goose/v3/internal/gooseutil
+github.com/pressly/goose/v3/internal/legacystore
+github.com/pressly/goose/v3/internal/sqlparser
+github.com/pressly/goose/v3/lock
+github.com/pressly/goose/v3/lock/internal/store
+github.com/pressly/goose/v3/lock/internal/table
+# github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
+## explicit; go 1.12
+github.com/remyoudompheng/bigfft
+# github.com/sethvargo/go-retry v0.5.0
+## explicit; go 1.25
+github.com/sethvargo/go-retry
+# github.com/yuin/goldmark v1.4.13
+## explicit; go 1.18
+github.com/yuin/goldmark
+github.com/yuin/goldmark/ast
+github.com/yuin/goldmark/extension
+github.com/yuin/goldmark/extension/ast
+github.com/yuin/goldmark/parser
+github.com/yuin/goldmark/renderer
+github.com/yuin/goldmark/renderer/html
+github.com/yuin/goldmark/text
+github.com/yuin/goldmark/util
+# go.uber.org/multierr v1.11.0
+## explicit; go 1.19
+go.uber.org/multierr
+# go.yaml.in/yaml/v4 v4.0.0-rc.2
+## explicit; go 1.18
+go.yaml.in/yaml/v4
+# golang.org/x/sync v0.24.0
+## explicit; go 1.26.0
+golang.org/x/sync/errgroup
+# golang.org/x/sys v0.49.0
+## explicit; go 1.26.0
+golang.org/x/sys/cpu
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+# golang.org/x/text v0.43.0
+## explicit; go 1.26.0
+golang.org/x/text/transform
+golang.org/x/text/unicode/norm
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3
+# modernc.org/libc v1.79.0
+## explicit; go 1.26.0
+modernc.org/libc
+modernc.org/libc/errno
+modernc.org/libc/fcntl
+modernc.org/libc/fts
+modernc.org/libc/grp
+modernc.org/libc/honnef.co/go/netdb
+modernc.org/libc/langinfo
+modernc.org/libc/limits
+modernc.org/libc/netdb
+modernc.org/libc/netinet/in
+modernc.org/libc/poll
+modernc.org/libc/pthread
+modernc.org/libc/pwd
+modernc.org/libc/signal
+modernc.org/libc/stdio
+modernc.org/libc/stdlib
+modernc.org/libc/sys/socket
+modernc.org/libc/sys/stat
+modernc.org/libc/sys/types
+modernc.org/libc/termios
+modernc.org/libc/time
+modernc.org/libc/unistd
+modernc.org/libc/utime
+modernc.org/libc/uuid
+modernc.org/libc/uuid/uuid
+modernc.org/libc/wctype
+# modernc.org/mathutil v1.7.1
+## explicit; go 1.21
+modernc.org/mathutil
+# modernc.org/memory v1.12.1
+## explicit; go 1.23.0
+modernc.org/memory
+# modernc.org/sqlite v1.61.1
+## explicit; go 1.26.0
+modernc.org/sqlite
+modernc.org/sqlite/lib
+modernc.org/sqlite/vtab

@@ -1,0 +1,565 @@
+package bill
+
+import (
+	"fmt"
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl.html/components/regimes/mx"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl.html/components/taxid"
+	"github.com/invopop/gobl.html/components/utils"
+	"github.com/invopop/gobl/bill"
+	"github.com/invopop/gobl/cal"
+	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/tax"
+)
+
+templ lines(inv *bill.Invoice) {
+	@t.Scope(".lines") {
+		@linesWithSupport(inv.RegimeDef(), inv.Lines, inv.Discounts, inv.Charges)
+	}
+}
+
+templ linesWithSupport(reg *tax.RegimeDef, lines []*bill.Line, dss []*bill.Discount, chs []*bill.Charge) {
+	{{ ls := prepareLineSupport(reg, lines, dss, chs)}}
+	<section class="lines">
+		<h2>
+			@t.T(".title")
+		</h2>
+		<table>
+			<thead>
+				<tr>
+					<th class="ref">
+						@t.T(".i")
+					</th>
+					<th class="description">
+						@t.T(".description")
+					</th>
+					<th class="quantity">
+						@t.T(".quantity")
+					</th>
+					if ls.units {
+						<th class="unit">
+							@t.T(".unit")
+						</th>
+					}
+					if ls.prices {
+						<th class="price">
+							@t.T(".price")
+						</th>
+					}
+					if ls.discounts {
+						<th class="discount">
+							@t.T(".discount")
+						</th>
+					}
+					if ls.charges {
+						<th class="charge">
+							@t.T(".charges")
+						</th>
+					}
+					for _, cat := range ls.categories {
+						<th class="tax">
+							{ cat.Name.In(t.Lang(ctx)) }
+						</th>
+						if ls.exemptions[cat] {
+							<th class="exemption">
+								@t.T(".exemption")
+							</th>
+						}
+					}
+					if ls.totals {
+						<th class="total">
+							@t.T(".total")
+						</th>
+					}
+				</tr>
+			</thead>
+			{{ st := newSubtotal() }}
+			@linesBody(lines, ls, st)
+			@discountsBody(dss, ls, st)
+			@chargesBody(chs, ls, st)
+		</table>
+	</section>
+}
+
+templ linesBody(lines []*bill.Line, ls *lineSupport, st *subtotal) {
+	<tbody>
+	  for _, l := range lines {
+			@line(l, ls, st)
+		}
+	</tbody>
+}
+
+templ line(l *bill.Line, ls *lineSupport, st *subtotal) {
+	<tr data-subtotal={ t.LocalizeMoney(ctx, st.Add(l.Total)) }>
+		<td class="ref">
+			{ fmt.Sprint(l.Index) }
+		</td>
+		<td class="description">
+			<div class="limited-height">
+				<span>{ l.Item.Name }</span>
+				if l.Item.Description != "" {
+					<br/>
+					<small>{ l.Item.Description }</small>
+				}
+				@lineIdentifier(l.Identifier)
+				if l.Item.Ref != "" {
+					<span class="subline">
+						<span class="label">
+							@t.T(".ref")
+						</span>
+						<code>
+							{ l.Item.Ref.String() }
+						</code>
+					</span>
+				}
+			@identities(l.Item.Identities)
+			@linePeriod(l.Period)
+			@lineNotes(l.Notes)
+			@mx.LineExtensions(l)
+			@lineSeller(l.Seller)
+		</div>
+		</td>
+		<td class="quantity">
+			@t.L(l.Quantity)
+		</td>
+		if ls.units {
+			<td class="unit">
+				if l.Item.Unit != "" {
+					{ t.UnitName(ctx, l.Item.Unit) }
+				} else {
+					<!-- empty -->
+				}
+			</td>
+		}
+		if ls.prices {
+			<td class="price">
+				if l.Item.Price != nil {
+					@t.LM(*l.Item.Price)
+					@lineItemAltPrices(l)
+				}
+			</td>
+		}
+		if ls.discounts {
+			<td class="discount">
+				@lineGroupDiscounts(l)
+			</td>
+		}
+		if ls.charges {
+			<td class="charge">
+				@lineGroupCharges(l)
+			</td>
+		}
+		for _, cat := range ls.categories {
+			{{ combo := l.Taxes.Get(cat.Code) }}
+			<td class="tax">
+				if combo != nil {
+					if combo.Percent != nil {
+						@t.L(*combo.Percent)
+						if (combo.Surcharge != nil) {
+							<br>+&nbsp;
+							@t.L(*combo.Surcharge)
+						}
+					} else {
+						@t.T(".no_percent")
+					}
+				} else {
+					<!-- empty -->
+				}
+			</td>
+			if ls.exemptions[cat] {
+				<td class="exemption">
+					if combo != nil {
+						if code := taxExemptionCode(combo.Percent, combo.Ext); code != "" {
+							<code>
+								{ code }
+							</code>
+						}
+					}
+				</td>
+			}
+		}
+		if ls.totals {
+			<td class="total">
+				if l.Total != nil {
+					@t.LM(*l.Total)
+				}
+			</td>
+		}
+	</tr>
+	for _, b := range l.Breakdown {
+		@breakdownLine(b, ls, st)
+	}
+}
+
+templ breakdownLine(sl *bill.SubLine, ls *lineSupport, st *subtotal) {
+	<tr class="breakdown" data-subtotal={ t.LocalizeMoney(ctx, st.Add(sl.Total)) }>
+		<td class="ref">
+			<!-- empty for breakdown -->
+		</td>
+		<td class="description">
+			<div class="limited-height">
+				<span>{ sl.Item.Name }</span>
+				if sl.Item.Description != "" {
+					<br/>
+					<small>{ sl.Item.Description }</small>
+				}
+				@lineIdentifier(sl.Identifier)
+				if sl.Item.Ref != "" {
+					<span class="subline">
+						<span class="label">
+							@t.T(".ref")
+						</span>
+						<code>
+							{ sl.Item.Ref.String() }
+						</code>
+					</span>
+				}
+				@identities(sl.Item.Identities)
+				@linePeriod(sl.Period)
+				@sublineNotes(sl.Notes)
+			</div>
+		</td>
+		<td class="quantity">
+			@t.L(sl.Quantity)
+		</td>
+		if ls.units {
+			<td class="unit">
+				if sl.Item.Unit != "" {
+					{ t.UnitName(ctx, sl.Item.Unit) }
+				} else {
+					<!-- empty -->
+				}
+			</td>
+		}
+		if ls.prices {
+			<td class="price">
+				if sl.Item.Price != nil {
+					@t.LM(*sl.Item.Price)
+					@sublineItemAltPrices(sl)
+				}
+			</td>
+		}
+		if ls.discounts {
+			<td class="discount">
+				@sublineGroupDiscounts(sl)
+			</td>
+		}
+		if ls.charges {
+			<td class="charge">
+				@sublineGroupCharges(sl)
+			</td>
+		}
+		for _, cat := range ls.categories {
+			<td class="tax">
+				<!-- SubLines don't have taxes -->
+			</td>
+			if ls.exemptions[cat] {
+				<td class="exemption">
+					<!-- empty -->
+				</td>
+			}
+		}
+		if ls.totals {
+			<td class="total">
+				if sl.Total != nil {
+					@t.LM(*sl.Total)
+				}
+			</td>
+		}
+	</tr>
+}
+
+templ sublineNotes(notes []*org.Note) {
+	@lineNotes(notes)
+}
+
+templ sublineItemAltPrices(sl *bill.SubLine) {
+	@itemAltPrices(sl.Item.AltPrices)
+}
+
+templ sublineGroupDiscounts(sl *bill.SubLine) {
+	@groupDiscounts(sl.Discounts)
+}
+
+templ sublineGroupCharges(sl *bill.SubLine) {
+	@groupCharges(sl.Charges)
+}
+
+templ lineSeller(seller *org.Party) {
+	if seller != nil {
+		<span class="seller">
+			@utils.Coalesce(
+				mx.LineSeller(seller),
+				defaultLineSeller(seller),
+			)
+		</span>
+	}
+}
+
+templ defaultLineSeller(seller *org.Party) {
+	<span class="subline">
+		<span class="label">
+			@t.T(".on_behalf_of")
+		</span>
+		{ seller.Name }
+		if seller.TaxID != nil && seller.TaxID.Code != "" {
+			{ " · " }
+			<code>{ taxid.Format(ctx, seller.TaxID).Code }</code>
+		}
+	</span>
+}
+
+// lineIdentifier renders the line identifier's code using the same markup as the item description.
+templ lineIdentifier(id *org.Identity) {
+	if id != nil && id.Code != "" {
+		<br/>
+		<small>{ id.Code.String() }</small>
+	}
+}
+
+templ identities(idents []*org.Identity) {
+	if idents = presentableIdentities(idents); len(idents) > 0 {
+		for _, ident := range idents {
+			<span class="subline">
+				<span class="label">
+					if ident.Label != "" {
+						{ ident.Label }
+					} else {
+						{ ident.Type.String() }
+					}
+				</span>
+				<code>
+					{ ident.Code.String() }
+				</code>
+			</span>
+		}
+	}
+}
+
+templ linePeriod(p *cal.Period) {
+	if p != nil {
+		<span class="subline">
+			<span class="label">
+				if p.Label != "" {
+					{ p.Label }
+				} else {
+					@t.T(".period")
+				}
+			</span>
+			@t.T(".period_range", i18n.M{"start": t.Localize(ctx, p.Start), "end": t.Localize(ctx, p.End)})
+		</span>
+	}
+}
+
+templ lineItemAltPrices(l *bill.Line) {
+	@itemAltPrices(l.Item.AltPrices)
+}
+
+templ lineGroupDiscounts(l *bill.Line) {
+	@groupDiscounts(l.Discounts)
+}
+
+templ lineGroupCharges(l *bill.Line) {
+	@groupCharges(l.Charges)
+}
+
+templ itemAltPrices(altPrices []*currency.Amount) {
+	for _, a := range altPrices {
+		<span class="alt-price">
+			@t.LCD(a.Value, a.Currency)
+		</span>
+	}
+}
+
+templ groupDiscounts(discounts []*bill.LineDiscount) {
+	for _, d := range discounts {
+		<span class="discount-content">
+			if d.Percent != nil {
+				@t.L(*d.Percent)
+			} else {
+				@t.LM(d.Amount)
+			}
+		</span>
+	}
+}
+
+templ groupCharges(charges []*bill.LineCharge) {
+	for _, c := range charges {
+		<span class="charge-content">
+			if c.Code != "" {
+				<span class="code">
+					{ c.Code.String() }
+				</span>
+			}
+			if c.Percent != nil {
+				@t.L(*c.Percent)
+			} else {
+				@t.LM(c.Amount)
+			}
+		</span>
+	}
+}
+
+templ discountsBody(dis []*bill.Discount, ls *lineSupport, st *subtotal) {
+	if len(dis) > 0 {
+		<tbody class="discounts">
+			for _, row := range dis {
+				@discountRow(row, ls, st)
+			}
+		</tbody>
+	}
+}
+
+templ discountRow(row *bill.Discount, ls *lineSupport, st *subtotal) {
+	<tr data-subtotal={ t.LocalizeMoney(ctx, st.Substract(&row.Amount)) }>
+		<td class="i">
+			{ fmt.Sprintf("D%d", row.Index) }
+		</td>
+		<td class="description">
+			{ row.Reason }
+			if row.Code != "" {
+				<span class="identity">
+					<span class="label">
+						@t.T(".ref")
+					</span>
+					<code>
+						{ row.Code.String() }
+					</code>
+				</span>
+			}
+		</td>
+		<td class="quantity">
+			<!-- no quantity -->
+		</td>
+		if ls.units {
+			<td>
+				<!-- empty -->
+			</td>
+		}
+		if ls.prices {
+			<td class="percent">
+				if row.Percent != nil {
+					@t.L(*row.Percent)
+			} else {
+				<!-- empty -->
+				}
+			</td>
+		}
+		for _, cat := range ls.categories {
+			<td class="tax">
+				if combo := row.Taxes.Get(cat.Code); combo != nil {
+					if combo.Percent != nil {
+						@t.L(*combo.Percent)
+					} else {
+						&mdash;
+					}
+				} else {
+					<!-- empty -->
+				}
+			</td>
+			if ls.exemptions[cat] {
+				<td class="exemption">
+					<!-- empty -->
+				</td>
+			}
+		}
+		if ls.discounts {
+			<td>
+				<!-- empty -->
+			</td>
+		}
+		if ls.charges {
+			<td>
+				<!-- empty -->
+			</td>
+		}
+		if ls.totals {
+			<td class="total">
+				@t.LM(row.Amount)
+			</td>
+		}
+	</tr>
+}
+
+templ chargesBody(chs []*bill.Charge, ls *lineSupport, st *subtotal) {
+	if len(chs) > 0 {
+		<tbody class="charges">
+			for _, row := range chs {
+				@chargeRow(row, ls, st)
+			}
+		</tbody>
+	}
+}
+
+templ chargeRow(row *bill.Charge, ls *lineSupport, st *subtotal) {
+	<tr data-subtotal={ t.LocalizeMoney(ctx, st.Add(&row.Amount)) }>
+		<td class="ref">
+			{ fmt.Sprintf("C%d", row.Index) }
+		</td>
+		<td class="description">
+			{ row.Reason }
+			if row.Code != "" {
+				<span class="identity">
+					<span class="label">
+						@t.T(".ref")
+					</span>
+					<code>
+						{ row.Code.String() }
+					</code>
+				</span>
+			}
+		</td>
+		<td class="quantity">
+			<!-- no quantity -->
+		</td>
+		if ls.units {
+			<td>
+				<!-- empty -->
+			</td>
+		}
+		if ls.prices {
+			<td class="percent">
+				if row.Percent != nil {
+					@t.L(*row.Percent)
+				} else {
+					<!-- empty -->
+				}
+			</td>
+		}
+		for _, cat := range ls.categories {
+			<td class="tax">
+				if combo := row.Taxes.Get(cat.Code); combo != nil {
+					if combo.Percent == nil {
+						&mdash;
+					} else {
+						@t.L(*combo.Percent)
+					}
+				} else {
+					<!-- empty -->
+				}
+			</td>
+			if ls.exemptions[cat] {
+				<td class="exemption">
+					<!-- empty -->
+				</td>
+			}
+		}
+		if ls.discounts {
+			<td>
+				<!-- empty -->
+			</td>
+		}
+		if ls.charges {
+			<td>
+				<!-- empty -->
+			</td>
+		}
+		if ls.totals {
+			<td class="total">
+				@t.LM(row.Amount)
+			</td>
+		}
+	</tr>
+}

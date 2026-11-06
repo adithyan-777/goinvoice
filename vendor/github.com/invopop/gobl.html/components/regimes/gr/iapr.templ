@@ -1,0 +1,99 @@
+package gr
+
+import (
+	"strings"
+	"github.com/invopop/gobl"
+	"github.com/invopop/ctxi18n/i18n"
+	"github.com/invopop/gobl/regimes/gr"
+	"github.com/invopop/gobl.html/components/images"
+	"github.com/invopop/gobl.html/components/t"
+	"github.com/invopop/gobl.html/internal"
+	"github.com/invopop/gobl/addons/gr/mydata"
+)
+
+templ IAPR(env *gobl.Envelope) {
+	if hasStamps(env) {
+		<style type="text/css">
+			.iapr {
+				break-inside: avoid;
+				font-size: 7pt;
+				line-height: 1.6em;
+				display: flex;
+				align-items: top;
+			}
+			.iapr .image {
+				margin-right: 6mm;
+			}
+			.iapr img {
+				width: 30mm;
+				height: 30mm;
+			}
+			.iapr .value {
+				font-family: "Geist Mono", monospace;
+			}
+		</style>
+		<section class="iapr">
+			if st := env.Head.GetStamp(gr.StampIAPRQR); st != nil {
+				<div class="image">
+					<a href={ templ.URL(st.Value) }>
+						@images.QR(st.Value)
+					</a>
+				</div>
+			}
+			<div class="text">
+				if st := env.Head.GetStamp(gr.StampIAPRHash); st != nil {
+					<div>
+						<b>Σήμανση:</b>
+						<span class="value">{ st.Value }</span>
+					</div>
+				}
+				if st := env.Head.GetStamp(gr.StampIAPRUID); st != nil {
+					<div>
+						<b>UNIQUE ID:</b>
+						<span class="value">{ st.Value }</span>
+					</div>
+				}
+				if st := env.Head.GetStamp(gr.StampIAPRMark); st != nil {
+					<div>
+						<b>ΜΑΡΚ:</b>
+						<span class="value">{ st.Value }</span>
+					</div>
+				}
+				if st := env.Head.GetStamp(gr.StampIAPRProvider); st != nil {
+					<div>
+						<b>Υ.ΠΑ.Η.Ε.Σ:</b>
+						<span>{ st.Value }</span>
+					</div>
+				}
+			</div>
+		</section>
+	}
+}
+
+templ TitleType(doc internal.Document) {
+	if isGreek(doc) {
+		@titleType(doc)
+	}
+}
+
+templ titleType(doc internal.Document) {
+	if typ := myDataInvoiceType(doc); typ != "" {
+		if translation := i18n.T(ctx, "regimes.gr.title." + string(typ)); typ != "" {
+			if strings.HasPrefix(translation, "!") {
+				@t.T("billing.invoice.title.other")
+			} else {
+				{ translation }
+			}
+		}
+	}
+}
+
+func myDataInvoiceType(doc internal.Document) string {
+		ext := doc.GetExt()
+		code := ext.Get(mydata.ExtKeyInvoiceType)
+		return string(code)
+}
+
+func hasStamps(env *gobl.Envelope) bool {
+	return env.Head.GetStamp(gr.StampIAPRQR) != nil
+}

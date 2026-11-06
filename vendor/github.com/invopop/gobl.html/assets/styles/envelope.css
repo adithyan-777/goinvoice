@@ -1,0 +1,142 @@
+@page {
+    font-family: "Inter", sans-serif;
+    size: A4 portrait;
+    margin: 10mm;
+    margin-bottom: 20mm;
+    counter-increment: page;
+    font-size: 9pt;
+    line-height: 1.5em;
+    color: #030712;
+    font-weight: 400;
+}
+body {
+    font-family: "Inter", sans-serif;
+    font-size: 9pt;
+    line-height: 1.5em;
+    margin: 0;
+    margin-bottom: 0mm;
+    color: #030712;
+}
+@media screen {
+    body {
+        margin: 10mm;
+    }
+    footer.screen {
+        display: block;
+    }
+    footer.print {
+        display: none;
+    }
+}
+article.envelope {
+    min-height: 100%;
+}
+article,
+section,
+header,
+div,
+h1,
+h2,
+h3,
+h4,
+table,
+th,
+td,
+p {
+    font-size: 1em;
+    margin: 0;
+}
+h1,
+h2,
+h3,
+h4 {
+    font-weight: 500;
+    color: #4b5563;
+}
+a {
+    color: #4b5563;
+}
+table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    line-height: 1.5;
+}
+th,
+td {
+    text-align: left;
+    break-inside: avoid;
+}
+code {
+    font-family: "Geist Mono", monospace;
+}
+section.footer span.page-number:before {
+    content: counter(page);
+}
+@media print {
+    footer.screen {
+        display: none;
+    }
+    footer.print {
+        display: block;
+    }
+}
+@page {
+    @bottom-center {
+        content: element(footer);
+    }
+}
+footer {
+    height: 12mm;
+    text-align: right;
+    padding: 4mm 0mm;
+}
+footer.print {
+    position: running(footer);
+}
+footer.screen {
+    padding: 2mm 0mm;
+}
+footer .page-number {
+    content: counter(page);
+}
+footer .pages-number {
+    content: counter(pages);
+}
+footer .gobl-logo {
+    float: left;
+}
+footer.print .notes:after {
+    content: " · ";
+}
+footer .gobl-logo img {
+    width: 8mm;
+    height: 8mm;
+}
+footer.print .gobl-logo {
+    margin-top: -7mm;
+}
+@page {
+    @prince-overlay {
+        content: element(watermark);
+    }
+}
+div.watermark {
+    position: running(watermark);
+    font-size: 100pt;
+    font-weight: 700;
+    color: #6B727D26;
+    text-align: center;
+    width: 100%;
+    line-height: 1;
+    z-index: 0;
+    --wm-transform: rotate(-30deg) scale(1.1);
+    transform: var(--wm-transform);
+}
+@media screen {
+    div.watermark {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) var(--wm-transform);
+    }
+}

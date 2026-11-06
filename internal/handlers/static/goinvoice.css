@@ -1,0 +1,176 @@
+/* goinvoice theme — pattika structure, bespoke identity.
+   Deep teal on warm paper (light) / pine ink (dark). */
+
+:root {
+	--canvas:            light-dark(#F6F7F3, #0F1413);
+	--bg-shell:          light-dark(#EBECE6, #0F1413);
+	--bg:                light-dark(#F6F7F3, #151B1A);
+	--bg-sidebar:        light-dark(#F6F7F3, #151B1A);
+	--bg-elevated:       light-dark(#FFFFFF, #1B2221);
+	--bg-prompt:         light-dark(#EFF0E9, #1B2221);
+	--bg-muted:          light-dark(#EFF0E9, #1B2221);
+	--bg-popover:        light-dark(#FFFFFF, #1B2221);
+	--surface-secondary: light-dark(#E4E7DF, #29322F);
+
+	--nav-active:        light-dark(#D9EBE2, #22302B);
+	--hover:             light-dark(#D9EBE2, #22302B);
+	--hover-strong:      light-dark(#C6DFD2, #2B3B34);
+	--hover-subtle:      light-dark(#F0F5F0, rgba(34, 48, 43, 0.72));
+
+	--border:            light-dark(#E0E4D9, #2B3532);
+	--border-header:     light-dark(#E0E4D9, #2B3532);
+	--input:             light-dark(#7A847F, #8E9A95);
+	--ring:              light-dark(#0E7C6B, #5EEAD4);
+
+	--text:              light-dark(#1E2422, #D5DCD9);
+	--text-muted:        light-dark(#5F6B66, #9AA6A1);
+	--scrollbar-thumb:   color-mix(in srgb, var(--text-muted) 72%, var(--bg-shell));
+
+	--accent:            light-dark(#0E7C6B, #2DD4BF);
+	--accent-text:       light-dark(#0E7C6B, #5EEAD4);
+	--accent-outline:    light-dark(transparent, #5EEAD4);
+	--accent-hover:      light-dark(#0A6557, #14B8A6);
+	--accent-pressed:    light-dark(#084E44, #0E7C6B);
+	--accent-muted:      light-dark(
+	                          color-mix(in srgb, #0E7C6B 12%, #F6F7F3),
+	                          color-mix(in srgb, #2DD4BF 22%, #151B1A)
+	                        );
+	--accent-warm:       light-dark(#0E7C6B, #2DD4BF);
+	--accent-warm-hover: light-dark(#0A6557, #14B8A6);
+
+	--shadow-card:       light-dark(0 1px 2px rgb(28 32 30 / 0.05), none);
+}
+
+/* Text brand in the sidebar. */
+.brand-text {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	height: 36px;
+	padding: 0 8px 0 4px;
+	font-size: 17px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	color: var(--accent-text);
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.brand-text .bx {
+	font-size: 22px;
+}
+
+/* Generic responsive form grid. */
+.form-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+	gap: var(--space-2) var(--space-3);
+	align-items: end;
+}
+
+.form-grid .form-field {
+	margin-bottom: 0;
+}
+
+.form-grid .form-actions {
+	grid-column: 1 / -1;
+	margin-top: var(--space-2);
+}
+
+/* KPI stat strip on the invoices page. */
+.kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+	gap: var(--space-2);
+	margin-bottom: var(--space-3);
+}
+
+.kpi {
+	position: relative;
+	overflow: hidden;
+	padding: var(--space-3) var(--space-4);
+	animation: fadeInUp var(--t-slow) var(--ease-out) both;
+}
+
+.kpi:nth-child(2) { animation-delay: 80ms; }
+.kpi:nth-child(3) { animation-delay: 160ms; }
+
+.kpi::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 3px;
+	background: var(--accent);
+	opacity: 0.85;
+}
+
+.kpi__label {
+	font-size: var(--text-micro);
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.kpi__value {
+	margin-top: var(--space-1);
+	font-size: 28px;
+	font-weight: 700;
+	letter-spacing: var(--tracking-tight);
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.kpi__value small {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-muted);
+	margin-left: 4px;
+}
+
+.kpi__sub {
+	margin-top: 2px;
+	font-size: var(--text-micro);
+	color: var(--text-muted);
+}
+
+/* Series badge + money figures in invoice rows. */
+.ref-badge {
+	display: inline-block;
+	min-width: 2.2em;
+	padding: 1px 8px;
+	margin-right: 8px;
+	border-radius: var(--r-pill);
+	background: var(--accent-muted);
+	color: var(--accent-text);
+	font-size: var(--text-micro);
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-align: center;
+}
+
+.data-table .num,
+.kpi__value {
+	font-variant-numeric: tabular-nums;
+}
+
+.money {
+	font-weight: 600;
+}
+
+/* Inline code sample on the invoices empty state. */
+pre.code {
+	background: var(--bg-prompt);
+	border: 1px solid var(--border);
+	border-radius: var(--r-md);
+	padding: var(--space-3);
+	overflow-x: auto;
+	font-size: 13px;
+}
+
+/* Numeric table columns. */
+.data-table .num {
+	text-align: right;
+}
