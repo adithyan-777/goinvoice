@@ -18,6 +18,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -96,20 +97,71 @@ func docFormFromRequest(r *http.Request, kind string) DocForm {
 	if v := get("currency"); v != "" {
 		f.Currency = v
 	}
+	f.SupID = get("sup_id")
 	f.SupName, f.SupCountry, f.SupCode = get("sup_name"), get("sup_country"), get("sup_code")
 	f.CusID = get("cus_id")
 	f.CusName, f.CusCountry, f.CusCode = get("cus_name"), get("cus_country"), get("cus_code")
 	f.MethodKey, f.MethodAmount = get("method_key"), get("method_amount")
 	f.Lines = f.Lines[:0]
-	for i := 0; i < 3; i++ {
-		p := func(n string) string { return get(n + "_" + string(rune('0'+i))) }
-		f.Lines = append(f.Lines, DocLineForm{
-			Item: p("item"), Qty: nonEmpty(p("qty"), "1"), Price: p("price"), Rate: p("rate"),
-			Amount: p("amount"), LineKey: p("linekey"),
-			RefSeries: p("ref_series"), RefCode: p("ref_code"),
-		})
+	switch kind {
+	case invoicer.KindInvoice, invoicer.KindOrder, invoicer.KindDelivery:
+		for _, i := range formLineIndexes(r.Form, "item", "product", "qty", "price", "rate") {
+			sfx := "_" + strconv.Itoa(i)
+			f.Lines = append(f.Lines, DocLineForm{
+				ProductID: strings.TrimSpace(r.FormValue("product" + sfx)),
+				Item:      strings.TrimSpace(r.FormValue("item" + sfx)),
+				Qty:       nonEmpty(strings.TrimSpace(r.FormValue("qty"+sfx)), "1"),
+				Price:     strings.TrimSpace(r.FormValue("price" + sfx)),
+				Rate:      strings.TrimSpace(r.FormValue("rate" + sfx)),
+			})
+		}
+	case invoicer.KindPayment:
+		for _, i := range formLineIndexes(r.Form, "amount", "ref_series", "ref_code") {
+			sfx := "_" + strconv.Itoa(i)
+			f.Lines = append(f.Lines, DocLineForm{
+				Qty:       "1",
+				Amount:    strings.TrimSpace(r.FormValue("amount" + sfx)),
+				RefSeries: strings.TrimSpace(r.FormValue("ref_series" + sfx)),
+				RefCode:   strings.TrimSpace(r.FormValue("ref_code" + sfx)),
+			})
+		}
+	case invoicer.KindStatus:
+		for _, i := range formLineIndexes(r.Form, "linekey", "ref_series", "ref_code") {
+			sfx := "_" + strconv.Itoa(i)
+			f.Lines = append(f.Lines, DocLineForm{
+				Qty:       "1",
+				LineKey:   strings.TrimSpace(r.FormValue("linekey" + sfx)),
+				RefSeries: strings.TrimSpace(r.FormValue("ref_series" + sfx)),
+				RefCode:   strings.TrimSpace(r.FormValue("ref_code" + sfx)),
+			})
+		}
 	}
 	return f
+}
+
+// formLineIndexes collects the sorted numeric suffixes of submitted line
+// fields (item_0, price_2, …) for the given prefixes. Rows added or removed
+// client-side may leave gaps, so indexes are discovered, not assumed
+// contiguous.
+func formLineIndexes(form url.Values, prefixes ...string) []int {
+	var out []int
+	seen := map[int]bool{}
+	for k := range form {
+		for _, p := range prefixes {
+			rest, ok := strings.CutPrefix(k, p+"_")
+			if !ok {
+				continue
+			}
+			n, err := strconv.Atoi(rest)
+			if err != nil || n < 0 || n > 500 || seen[n] {
+				continue
+			}
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
+	sort.Ints(out)
+	return out
 }
 
 func nonEmpty(v, def string) string {
@@ -138,30 +190,27 @@ func (h *Handler) parseDocForm(r *http.Request, kind string) (any, error) {
 	set("issue_date", get("issue_date"))
 	set("currency", get("currency"))
 
-	supName := get("sup_name")
-	supCountry, supCode := get("sup_country"), get("sup_code")
-	if supName != "" || supCountry != "" || supCode != "" {
-		sup := map[string]any{"name": supName}
-		if supCountry != "" || supCode != "" {
-			sup["tax_id"] = map[string]any{"country": supCountry, "code": supCode}
+	// Parties picked from the searchable catalog dropdown are loaded whole
+	// (all GOBL org.Party fields), not just name + tax identity.
+	if p, ok := h.supplierParty(r.Context(), get("sup_id"), get("sup_name")); ok {
+		if pm := partyMap(p); pm != nil {
+			m["supplier"] = pm
+		}
+	} else if name := get("sup_name"); name != "" {
+		sup := map[string]any{"name": name}
+		if c, code := get("sup_country"), get("sup_code"); c != "" || code != "" {
+			sup["tax_id"] = map[string]any{"country": c, "code": code}
 		}
 		m["supplier"] = sup
 	}
-	cusName := get("cus_name")
-	cusCountry, cusCode := get("cus_country"), get("cus_code")
-	// Customer picked from the searchable catalog dropdown: the tax identity
-	// always comes from the database, never from the form.
-	if c, ok := h.lookupCustomerByID(r.Context(), get("cus_id")); ok {
-		cusName, cusCountry, cusCode = c.Name, c.Country, c.Code
-	} else if cusName != "" && cusCountry == "" && cusCode == "" {
-		if c, ok := h.lookupCustomer(r.Context(), cusName); ok {
-			cusCountry, cusCode = c.Country, c.Code
+	if p, ok := h.customerParty(r.Context(), get("cus_id"), get("cus_name")); ok {
+		if pm := partyMap(p); pm != nil {
+			m["customer"] = pm
 		}
-	}
-	if cusName != "" || cusCountry != "" || cusCode != "" {
-		cus := map[string]any{"name": cusName}
-		if cusCountry != "" || cusCode != "" {
-			cus["tax_id"] = map[string]any{"country": cusCountry, "code": cusCode}
+	} else if name := get("cus_name"); name != "" {
+		cus := map[string]any{"name": name}
+		if c, code := get("cus_country"), get("cus_code"); c != "" || code != "" {
+			cus["tax_id"] = map[string]any{"country": c, "code": code}
 		}
 		m["customer"] = cus
 	}
@@ -169,9 +218,26 @@ func (h *Handler) parseDocForm(r *http.Request, kind string) (any, error) {
 	switch kind {
 	case invoicer.KindInvoice, invoicer.KindOrder, invoicer.KindDelivery:
 		var lines []any
-		for i := 0; i < 3; i++ {
-			p := func(n string) string { return get(n + "_" + string(rune('0'+i))) }
+		for pos, i := range formLineIndexes(r.Form, "item", "product", "qty", "price", "rate") {
+			p := func(n string) string { return get(n + "_" + strconv.Itoa(i)) }
+			prodID := p("product")
 			item, qty, price, rate := p("item"), p("qty"), p("price"), p("rate")
+			// Line item picked from the searchable product picker: the unit
+			// price and full item details default from the catalog but stay
+			// editable.
+			prod, hasProd := h.lookupProductByID(r.Context(), prodID)
+			if hasProd {
+				if item == "" {
+					item = prod.Name
+				}
+				if price == "" {
+					price = prod.Price
+				}
+			} else if item != "" && price == "" {
+				if p, ok := h.lookupProduct(r.Context(), strings.TrimSpace(item)); ok {
+					price = p.Price
+				}
+			}
 			if item == "" && price == "" {
 				continue
 			}
@@ -179,11 +245,26 @@ func (h *Handler) parseDocForm(r *http.Request, kind string) (any, error) {
 				qty = "1"
 			}
 			if item != "" && price == "" {
-				return nil, errors.New("line " + string(rune('1'+i)) + ": price is required")
+				return nil, errors.New("line " + strconv.Itoa(pos+1) + ": price is required")
+			}
+			itemMap := map[string]any{"name": item, "price": price}
+			// Product picked from the catalog: embed the whole org.Item
+			// (unit, description, ref, identities, attributes, images, …)
+			// while keeping the user's edited name/price.
+			if hasProd && prod.Item != nil {
+				if im := itemMapOf(prod.Item); im != nil {
+					if item != "" {
+						im["name"] = item
+					}
+					if price != "" {
+						im["price"] = price
+					}
+					itemMap = im
+				}
 			}
 			line := map[string]any{
 				"quantity": qty,
-				"item":     map[string]any{"name": item, "price": price},
+				"item":     itemMap,
 			}
 			if rate != "" {
 				line["taxes"] = []any{map[string]any{"cat": "VAT", "rate": rate}}
@@ -319,6 +400,8 @@ func (h *Handler) createDocError(w http.ResponseWriter, r *http.Request, kind, r
 	form.Action = "/" + route
 	form.Submit = "Create " + form.One
 	h.attachCustomers(r.Context(), &form)
+	h.attachSuppliers(r.Context(), &form)
+	h.attachProducts(r.Context(), &form)
 	if wantsFragment(r) {
 		if r.FormValue("modal") == "1" {
 			form.Modal = true
@@ -541,6 +624,7 @@ func statusKeyOptions() []DocOption {
 
 // DocLineForm is one editable line row in the UI document form.
 type DocLineForm struct {
+	ProductID string // order/delivery/invoice catalog product, "" when free-typed
 	Item      string // order/delivery item name
 	Qty       string // order/delivery quantity
 	Price     string // order/delivery unit price
@@ -552,18 +636,21 @@ type DocLineForm struct {
 }
 
 // DocForm carries the UI document form values: shared header/party fields
-// plus up to three line rows. Payment methods use MethodKey/MethodAmount.
+// plus a dynamic number of line rows. Payment methods use
+// MethodKey/MethodAmount.
 type DocForm struct {
-	Kind, Route, One              string
-	Action, Submit, Err           string
-	Modal                         bool
-	Type, Series, Code            string
-	IssueDate, Currency           string
-	SupName, SupCountry, SupCode  string
+	Kind, Route, One                    string
+	Action, Submit, Err                 string
+	Modal                               bool
+	Type, Series, Code                  string
+	IssueDate, Currency                 string
+	SupID, SupName, SupCountry, SupCode string
 	CusID, CusName, CusCountry, CusCode string
-	MethodKey, MethodAmount       string
-	Customers                     []DocCustomer
-	Lines                         []DocLineForm
+	MethodKey, MethodAmount             string
+	Suppliers                           []DocSupplier
+	Customers                           []DocCustomer
+	Products                            []DocProduct
+	Lines                               []DocLineForm
 }
 
 // DocCustomer is one searchable customer choice in the document form,
@@ -573,6 +660,143 @@ type DocCustomer struct {
 	Name    string
 	Country string
 	Code    string
+}
+
+// DocSupplier is one searchable supplier choice in the document form,
+// sourced from the suppliers catalog so tax IDs fill in automatically.
+type DocSupplier struct {
+	ID      string
+	Name    string
+	Country string
+	Code    string
+}
+
+// DocProduct is one searchable product choice for document line items,
+// sourced from the products catalog so unit prices and item details fill in
+// automatically.
+type DocProduct struct {
+	ID       string
+	Ref      string
+	Name     string
+	Price    string
+	Currency string
+	Unit     string
+	Item     *org.Item
+}
+
+// attachProducts loads the product catalog for the searchable line-item
+// picker.
+func (h *Handler) attachProducts(ctx context.Context, f *DocForm) {
+	rows, err := h.catalog.ListProducts(ctx)
+	if err != nil {
+		log.Printf("form products: %v", err)
+		return
+	}
+	for _, p := range rows {
+		f.Products = append(f.Products, DocProduct{
+			ID:       p.ID,
+			Ref:      p.Ref,
+			Name:     p.Name,
+			Price:    p.Price,
+			Currency: p.Currency,
+			Unit:     nsStr(p.Unit),
+		})
+		for i := range f.Lines {
+			if f.Lines[i].ProductID == "" && f.Lines[i].Item != "" &&
+				(strings.EqualFold(strings.TrimSpace(p.Name), strings.TrimSpace(f.Lines[i].Item)) ||
+					strings.EqualFold(strings.TrimSpace(p.Ref), strings.TrimSpace(f.Lines[i].Item))) {
+				f.Lines[i].ProductID = p.ID
+			}
+		}
+	}
+}
+
+// lookupProductByID finds a catalog product by primary key and loads its full
+// org.Item representation.
+func (h *Handler) lookupProductByID(ctx context.Context, id string) (DocProduct, bool) {
+	if id == "" {
+		return DocProduct{}, false
+	}
+	it, err := h.catalog.GetProductItem(ctx, id)
+	if err != nil {
+		return DocProduct{}, false
+	}
+	return DocProduct{
+		ID:       id,
+		Ref:      it.Ref.String(),
+		Name:     it.Name,
+		Price:    amountOrEmpty(it.Price),
+		Currency: it.Currency.String(),
+		Unit:     it.Unit.String(),
+		Item:     it,
+	}, true
+}
+
+// lookupProduct finds a catalog product by exact name or ref
+// (case-insensitive).
+func (h *Handler) lookupProduct(ctx context.Context, name string) (DocProduct, bool) {
+	rows, err := h.catalog.ListProducts(ctx)
+	if err != nil {
+		return DocProduct{}, false
+	}
+	for _, p := range rows {
+		if strings.EqualFold(strings.TrimSpace(p.Name), name) ||
+			strings.EqualFold(strings.TrimSpace(p.Ref), name) {
+			return h.lookupProductByID(ctx, p.ID)
+		}
+	}
+	return DocProduct{}, false
+}
+
+// attachSuppliers loads the supplier catalog for the searchable picker.
+func (h *Handler) attachSuppliers(ctx context.Context, f *DocForm) {
+	rows, err := h.catalog.ListSuppliers(ctx)
+	if err != nil {
+		log.Printf("form suppliers: %v", err)
+		return
+	}
+	for _, s := range rows {
+		f.Suppliers = append(f.Suppliers, DocSupplier{
+			ID:      s.ID,
+			Name:    s.Name,
+			Country: nsStr(s.TaxCountry),
+			Code:    nsStr(s.TaxCode),
+		})
+		if f.SupID == "" && f.SupName != "" && strings.EqualFold(strings.TrimSpace(s.Name), strings.TrimSpace(f.SupName)) {
+			f.SupID = s.ID
+		}
+	}
+}
+
+// lookupSupplierByID finds a catalog supplier by primary key.
+func (h *Handler) lookupSupplierByID(ctx context.Context, id string) (DocSupplier, bool) {
+	if id == "" {
+		return DocSupplier{}, false
+	}
+	s, err := h.catalog.GetSupplier(ctx, id)
+	if err != nil {
+		return DocSupplier{}, false
+	}
+	return DocSupplier{ID: s.ID, Name: s.Name, Country: nsStr(s.TaxCountry), Code: nsStr(s.TaxCode)}, true
+}
+
+// lookupSupplier finds a catalog supplier by exact (case-insensitive) name.
+func (h *Handler) lookupSupplier(ctx context.Context, name string) (DocSupplier, bool) {
+	rows, err := h.catalog.ListSuppliers(ctx)
+	if err != nil {
+		return DocSupplier{}, false
+	}
+	for _, s := range rows {
+		if strings.EqualFold(strings.TrimSpace(s.Name), name) {
+			return DocSupplier{
+				ID:      s.ID,
+				Name:    s.Name,
+				Country: nsStr(s.TaxCountry),
+				Code:    nsStr(s.TaxCode),
+			}, true
+		}
+	}
+	return DocSupplier{}, false
 }
 
 // attachCustomers loads the customer catalog for the searchable picker.
@@ -618,15 +842,21 @@ func kindForRoute(route string) string {
 }
 
 // renderDocFormModal re-renders a New document form in the modal, optionally
-// preselecting a customer (used after creating one from the form itself).
-func (h *Handler) renderDocFormModal(w http.ResponseWriter, r *http.Request, kind, preselectID string) {
+// preselecting a customer or supplier (used after creating one from the
+// form itself).
+func (h *Handler) renderDocFormModal(w http.ResponseWriter, r *http.Request, kind, preselectCustomerID, preselectSupplierID string) {
 	form := emptyDocForm(kind)
 	form.Modal = true
 	form.Action = "/" + form.Route
 	form.Submit = "Create " + form.One
 	h.attachCustomers(r.Context(), &form)
-	if c, ok := h.lookupCustomerByID(r.Context(), preselectID); ok {
+	h.attachSuppliers(r.Context(), &form)
+	h.attachProducts(r.Context(), &form)
+	if c, ok := h.lookupCustomerByID(r.Context(), preselectCustomerID); ok {
 		form.CusID, form.CusName = c.ID, c.Name
+	}
+	if s, ok := h.lookupSupplierByID(r.Context(), preselectSupplierID); ok {
+		form.SupID, form.SupName = s.ID, s.Name
 	}
 	sseBegin(w)
 	sseSignals(w, `{"modalTitle": "New `+form.One+`"}`)
@@ -653,6 +883,63 @@ func (h *Handler) lookupCustomer(ctx context.Context, name string) (DocCustomer,
 	return DocCustomer{}, false
 }
 
+// supplierParty resolves a catalog supplier by ID (preferred) or exact name.
+func (h *Handler) supplierParty(ctx context.Context, id, name string) (*org.Party, bool) {
+	if id != "" {
+		if p, err := h.catalog.GetSupplierParty(ctx, id); err == nil {
+			return p, true
+		}
+	}
+	if name != "" {
+		if s, ok := h.lookupSupplier(ctx, name); ok {
+			if p, err := h.catalog.GetSupplierParty(ctx, s.ID); err == nil {
+				return p, true
+			}
+		}
+	}
+	return nil, false
+}
+
+// customerParty resolves a catalog customer by ID (preferred) or exact name.
+func (h *Handler) customerParty(ctx context.Context, id, name string) (*org.Party, bool) {
+	if id != "" {
+		if p, err := h.catalog.GetCustomerParty(ctx, id); err == nil {
+			return p, true
+		}
+	}
+	if name != "" {
+		if c, ok := h.lookupCustomer(ctx, name); ok {
+			if p, err := h.catalog.GetCustomerParty(ctx, c.ID); err == nil {
+				return p, true
+			}
+		}
+	}
+	return nil, false
+}
+
+// partyMap converts a party to the generic map used by parseDocForm before it
+// round-trips into the typed bill document.
+func partyMap(p *org.Party) map[string]any {
+	return jsonMap(p)
+}
+
+// itemMapOf converts a catalog item to the generic line-item map.
+func itemMapOf(it *org.Item) map[string]any {
+	return jsonMap(it)
+}
+
+func jsonMap(v any) map[string]any {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	return m
+}
+
 // emptyDocForm returns blank form values with per-kind defaults.
 func emptyDocForm(kind string) DocForm {
 	route, _, _, _ := docMeta(kind)
@@ -668,11 +955,16 @@ func emptyDocForm(kind string) DocForm {
 		Type: defType, Currency: "EUR",
 		IssueDate: time.Now().Format("2006-01-02"),
 		MethodKey: "credit-transfer",
-	}
-	for range 3 {
-		f.Lines = append(f.Lines, DocLineForm{Qty: "1", Rate: "standard"})
+		Lines:     []DocLineForm{{Qty: "1", Rate: "standard"}},
 	}
 	return f
+}
+
+// ensureDocLine grows the form lines so index i is addressable.
+func ensureDocLine(f *DocForm, i int) {
+	for len(f.Lines) <= i {
+		f.Lines = append(f.Lines, DocLineForm{Qty: "1", Rate: "standard"})
+	}
 }
 
 // dateStr renders a GOBL date for <input type="date"> (YYYY-MM-DD).
@@ -712,8 +1004,8 @@ func lineTaxRate(taxes tax.Set) string {
 	return ""
 }
 
-// docFormFromEnvelope prefills the form from a stored envelope (first three
-// lines; documents with more lines are still fully replaced on save).
+// docFormFromEnvelope prefills the form from a stored envelope (all lines;
+// saving replaces the document lines with the submitted ones).
 func docFormFromEnvelope(kind string, env *gobl.Envelope) DocForm {
 	f := emptyDocForm(kind)
 	switch doc := env.Extract().(type) {
@@ -722,9 +1014,13 @@ func docFormFromEnvelope(kind string, env *gobl.Envelope) DocForm {
 		f.IssueDate, f.Currency = dateStr(doc.IssueDate), doc.Currency.String()
 		fillParties(&f, doc.Supplier, doc.Customer)
 		for i, l := range doc.Lines {
-			if i >= 3 || l == nil {
+			if l == nil {
+				continue
+			}
+			if i >= 200 {
 				break
 			}
+			ensureDocLine(&f, i)
 			f.Lines[i].Qty = l.Quantity.String()
 			if l.Item != nil {
 				f.Lines[i].Item = l.Item.Name
@@ -739,9 +1035,13 @@ func docFormFromEnvelope(kind string, env *gobl.Envelope) DocForm {
 		f.IssueDate, f.Currency = dateStr(doc.IssueDate), doc.Currency.String()
 		fillParties(&f, doc.Supplier, doc.Customer)
 		for i, l := range doc.Lines {
-			if i >= 3 || l == nil {
+			if l == nil {
+				continue
+			}
+			if i >= 200 {
 				break
 			}
+			ensureDocLine(&f, i)
 			f.Lines[i].Qty = l.Quantity.String()
 			if l.Item != nil {
 				f.Lines[i].Item = l.Item.Name
@@ -756,9 +1056,13 @@ func docFormFromEnvelope(kind string, env *gobl.Envelope) DocForm {
 		f.IssueDate, f.Currency = dateStr(doc.IssueDate), doc.Currency.String()
 		fillParties(&f, doc.Supplier, doc.Customer)
 		for i, l := range doc.Lines {
-			if i >= 3 || l == nil {
+			if l == nil {
+				continue
+			}
+			if i >= 200 {
 				break
 			}
+			ensureDocLine(&f, i)
 			f.Lines[i].Qty = l.Quantity.String()
 			if l.Item != nil {
 				f.Lines[i].Item = l.Item.Name
@@ -773,9 +1077,13 @@ func docFormFromEnvelope(kind string, env *gobl.Envelope) DocForm {
 		f.IssueDate, f.Currency = dateStr(doc.IssueDate), doc.Currency.String()
 		fillParties(&f, doc.Supplier, doc.Customer)
 		for i, l := range doc.Lines {
-			if i >= 3 || l == nil {
+			if l == nil {
+				continue
+			}
+			if i >= 200 {
 				break
 			}
+			ensureDocLine(&f, i)
 			f.Lines[i].Amount = l.Amount.String()
 			if l.Document != nil {
 				f.Lines[i].RefSeries, f.Lines[i].RefCode = l.Document.Series.String(), l.Document.Code.String()
@@ -789,9 +1097,13 @@ func docFormFromEnvelope(kind string, env *gobl.Envelope) DocForm {
 		f.IssueDate = dateStr(doc.IssueDate)
 		fillParties(&f, doc.Supplier, doc.Customer)
 		for i, l := range doc.Lines {
-			if i >= 3 || l == nil {
+			if l == nil {
+				continue
+			}
+			if i >= 200 {
 				break
 			}
+			ensureDocLine(&f, i)
 			f.Lines[i].LineKey = l.Key.String()
 			if l.Doc != nil {
 				f.Lines[i].RefSeries, f.Lines[i].RefCode = l.Doc.Series.String(), l.Doc.Code.String()
@@ -800,6 +1112,7 @@ func docFormFromEnvelope(kind string, env *gobl.Envelope) DocForm {
 	}
 	return f
 }
+
 type DocOverview struct {
 	Route string
 	Title string
@@ -1113,6 +1426,8 @@ func (h *Handler) updateDocError(w http.ResponseWriter, r *http.Request, kind, r
 	form.Action = "/" + route + "/" + id
 	form.Submit = "Save " + form.One
 	h.attachCustomers(r.Context(), &form)
+	h.attachSuppliers(r.Context(), &form)
+	h.attachProducts(r.Context(), &form)
 	if wantsFragment(r) {
 		if r.FormValue("modal") == "1" {
 			form.Modal = true
@@ -1135,6 +1450,8 @@ func (h *Handler) newDocPage(kind string) http.HandlerFunc {
 		form.Action = "/" + route
 		form.Submit = "Create " + form.One
 		h.attachCustomers(r.Context(), &form)
+		h.attachSuppliers(r.Context(), &form)
+		h.attachProducts(r.Context(), &form)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := NewDocPage(route, docOne(kind), title, form).Render(r.Context(), w); err != nil {
 			log.Printf("render new %s: %v", kind, err)
@@ -1167,6 +1484,8 @@ func (h *Handler) editDocForm(kind string) http.HandlerFunc {
 		form.Action = "/" + route + "/" + id
 		form.Submit = "Save " + form.One
 		h.attachCustomers(r.Context(), &form)
+		h.attachSuppliers(r.Context(), &form)
+		h.attachProducts(r.Context(), &form)
 		if err := EditDocPage(route, docOne(kind), title, id, form).Render(r.Context(), w); err != nil {
 			log.Printf("render edit %s: %v", kind, err)
 		}
@@ -1314,6 +1633,8 @@ func (h *Handler) newDocModal(kind string) http.HandlerFunc {
 		form.Action = "/" + form.Route
 		form.Submit = "Create " + form.One
 		h.attachCustomers(r.Context(), &form)
+		h.attachSuppliers(r.Context(), &form)
+		h.attachProducts(r.Context(), &form)
 		respondFragment(w, r, "#modal-body", DocFormBody(form))
 	}
 }
@@ -1333,6 +1654,8 @@ func (h *Handler) editDocModal(kind string) http.HandlerFunc {
 		form.Action = "/" + form.Route + "/" + id
 		form.Submit = "Save " + form.One
 		h.attachCustomers(r.Context(), &form)
+		h.attachSuppliers(r.Context(), &form)
+		h.attachProducts(r.Context(), &form)
 		respondFragment(w, r, "#modal-body", DocFormBody(form))
 	}
 }

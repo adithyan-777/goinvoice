@@ -186,7 +186,7 @@ pre.code {
 }
 
 :root[data-sidebar-variant] .admin-modal .admin-modal__dialog {
-	width: min(720px, 100%);
+	width: min(980px, 100%);
 	height: auto;
 	max-height: min(88vh, 960px);
 	border: 1px solid var(--border);
@@ -218,7 +218,10 @@ pre.code {
 	}
 }
 
-/* ── Document form layout ─────────────────────────────────────────────── */
+/* ── Document form layout ───────────────────────────────────────────────
+   The `#modal-body` selectors outrank pattika's `#modal-body form`
+   (flex column) rule so the form keeps its grid inside the modal. */
+#modal-body .doc-form,
 .doc-form {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -269,6 +272,17 @@ pre.code {
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
 	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+}
+
+/* Dynamic product lines container (invoice/order/delivery forms). */
+.doc-lines {
+	grid-column: 1 / -1;
+	display: grid;
+	gap: var(--space-2);
 }
 
 .doc-form__row {
@@ -298,6 +312,7 @@ pre.code {
 }
 
 @media (max-width: 560px) {
+	#modal-body .doc-form,
 	.doc-form {
 		grid-template-columns: 1fr;
 	}
@@ -413,8 +428,9 @@ pre.code {
 	min-height: 26px;
 }
 
-/* Keep the customer picker and its "New customer" action on one row. */
-.customer-picker {
+/* Keep a party picker and its "New …" action on one row. */
+.customer-picker,
+.party-picker {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
@@ -422,12 +438,14 @@ pre.code {
 	gap: var(--space-2);
 }
 
-.customer-picker .combo {
+.customer-picker .combo,
+.party-picker .combo {
 	flex: 1 1 auto;
 	min-width: 0;
 }
 
-.customer-picker .btn {
+.customer-picker .btn,
+.party-picker .btn {
 	flex: 0 0 auto;
 	align-self: center;
 	white-space: nowrap;

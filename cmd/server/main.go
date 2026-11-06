@@ -30,6 +30,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -54,6 +55,13 @@ func main() {
 	// :memory: gives each pooled connection its own DB; use shared cache instead.
 	if path == ":memory:" {
 		path = "file::memory:?cache=shared"
+	}
+	// Enable FK enforcement on every pooled connection so party child rows
+	// cascade with their customer/supplier.
+	if strings.Contains(path, "?") {
+		path += "&_pragma=foreign_keys(1)"
+	} else {
+		path += "?_pragma=foreign_keys(1)"
 	}
 
 	db, err := sql.Open("sqlite", path)

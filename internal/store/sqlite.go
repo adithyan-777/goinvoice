@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 
 	"github.com/invopop/gobl"
+	"github.com/invopop/gobl/org"
 
 	"github.com/neo/goinvoice/internal/db/sqlc"
 )
@@ -14,15 +15,16 @@ var _ Entries = (*SQLite)(nil)
 var _ Catalog = (*SQLite)(nil)
 
 // SQLite persists envelopes via sqlc, same semantics as Store.
-// The full envelope is stored as JSON text (source of truth); no
-// party/product normalization — supplier/customer/item stay embedded.
+// The full envelope is stored as JSON text (source of truth); catalog
+// parties are normalized into customers/suppliers plus party_* child tables.
 type SQLite struct {
-	q *sqlc.Queries
+	db *sql.DB
+	q  *sqlc.Queries
 }
 
 // NewSQLite wires sqlc queries over an existing *sql.DB.
 func NewSQLite(db *sql.DB) *SQLite {
-	return &SQLite{q: sqlc.New(db)}
+	return &SQLite{db: db, q: sqlc.New(db)}
 }
 
 // Put marshals the envelope and upserts by ID.
@@ -93,18 +95,12 @@ func (s *SQLite) GetCustomer(ctx context.Context, id string) (sqlc.Customer, err
 	return c, nil
 }
 
-// CreateCustomer inserts a new customer; a duplicate tax code violates the
-// UNIQUE constraint and returns an error.
-func (s *SQLite) CreateCustomer(ctx context.Context, c sqlc.CreateCustomerParams) error {
-	return s.q.CreateCustomer(ctx, c)
+// SaveCustomer upserts a customer and its child collections.
+func (s *SQLite) SaveCustomer(ctx context.Context, id string, p *org.Party) error {
+	return s.SaveCustomerParty(ctx, id, p)
 }
 
-// UpdateCustomer updates a customer, returning rows affected.
-func (s *SQLite) UpdateCustomer(ctx context.Context, c sqlc.UpdateCustomerParams) (int64, error) {
-	return s.q.UpdateCustomer(ctx, c)
-}
-
-// DeleteCustomer removes a customer, returning rows affected.
+// DeleteCustomer removes a customer, cascading to its child rows.
 func (s *SQLite) DeleteCustomer(ctx context.Context, id string) (int64, error) {
 	return s.q.DeleteCustomer(ctx, id)
 }
@@ -126,18 +122,12 @@ func (s *SQLite) GetSupplier(ctx context.Context, id string) (sqlc.Supplier, err
 	return sp, nil
 }
 
-// CreateSupplier inserts a new supplier; a duplicate tax code violates the
-// UNIQUE constraint and returns an error.
-func (s *SQLite) CreateSupplier(ctx context.Context, sp sqlc.CreateSupplierParams) error {
-	return s.q.CreateSupplier(ctx, sp)
+// SaveSupplier upserts a supplier and its child collections.
+func (s *SQLite) SaveSupplier(ctx context.Context, id string, p *org.Party) error {
+	return s.SaveSupplierParty(ctx, id, p)
 }
 
-// UpdateSupplier updates a supplier, returning rows affected.
-func (s *SQLite) UpdateSupplier(ctx context.Context, sp sqlc.UpdateSupplierParams) (int64, error) {
-	return s.q.UpdateSupplier(ctx, sp)
-}
-
-// DeleteSupplier removes a supplier, returning rows affected.
+// DeleteSupplier removes a supplier, cascading to its child rows.
 func (s *SQLite) DeleteSupplier(ctx context.Context, id string) (int64, error) {
 	return s.q.DeleteSupplier(ctx, id)
 }
@@ -145,12 +135,6 @@ func (s *SQLite) DeleteSupplier(ctx context.Context, id string) (int64, error) {
 // ListProducts returns all products ordered by ref.
 func (s *SQLite) ListProducts(ctx context.Context) ([]sqlc.Product, error) {
 	return s.q.ListProducts(ctx)
-}
-
-// CreateProduct inserts a new product; duplicate ref/code violates the
-// UNIQUE constraint and returns an error.
-func (s *SQLite) CreateProduct(ctx context.Context, p sqlc.CreateProductParams) error {
-	return s.q.CreateProduct(ctx, p)
 }
 
 // GetProduct fetches one product, returning ErrProductNotFound when missing.
@@ -165,12 +149,7 @@ func (s *SQLite) GetProduct(ctx context.Context, id string) (sqlc.Product, error
 	return p, nil
 }
 
-// UpdateProduct updates a product, returning rows affected.
-func (s *SQLite) UpdateProduct(ctx context.Context, p sqlc.UpdateProductParams) (int64, error) {
-	return s.q.UpdateProduct(ctx, p)
-}
-
-// DeleteProduct removes a product, returning rows affected.
+// DeleteProduct removes a product, cascading to its child rows.
 func (s *SQLite) DeleteProduct(ctx context.Context, id string) (int64, error) {
 	return s.q.DeleteProduct(ctx, id)
 }

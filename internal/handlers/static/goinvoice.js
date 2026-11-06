@@ -72,19 +72,71 @@
 		const input = combo.querySelector(".combo__input");
 		if (!input || !option) return;
 		input.value = option.dataset.value || option.textContent.trim();
-		const form = combo.closest("form");
-		if (form) {
-			// Tax ID and country are resolved from the database using this id.
-			const id = form.querySelector('[name="cus_id"]');
-			if (id) id.value = option.dataset.id || "";
+		// Tax ID and country are resolved from the database using this id.
+		// The hidden id field lives inside the same combo, named cus_id or
+		// sup_id depending on the party picker.
+		const id = combo.querySelector('input[type="hidden"]');
+		if (id) id.value = option.dataset.id || "";
+		// Product lines: autofill the unit price from the catalog. The user
+		// can still edit it afterwards; the submitted value wins.
+		if (combo.hasAttribute("data-product-combo") && option.dataset.price) {
+			const line = combo.closest("[data-line]");
+			const price = line ? line.querySelector("[data-price-input]") : null;
+			if (price) price.value = option.dataset.price;
 		}
+		const lines = combo.closest("[data-lines]");
 		setExpanded(combo, false);
 		input.focus();
+		if (lines) ensureDocLine(lines);
+	}
+
+	// Dynamic document lines: the form starts with one product row; typing
+	// or picking a product in the last row appends a fresh empty row from
+	// the hidden <template>.
+	function appendDocLine(container, idx) {
+		const form = container.closest("form");
+		const tpl = form
+			? form.querySelector("template[data-line-template]")
+			: container.querySelector("template[data-line-template]");
+		if (!tpl) return;
+		const n = container.querySelectorAll("[data-line]").length;
+		container.insertAdjacentHTML("beforeend", tpl.innerHTML.split("__IDX__").join(String(idx)));
+		const rows = container.querySelectorAll("[data-line]");
+		const title = rows[rows.length - 1].querySelector("[data-line-title]");
+		if (title) title.textContent = "Line " + (n + 1);
+	}
+
+	function ensureDocLine(container) {
+		const rows = container.querySelectorAll("[data-line]");
+		if (!rows.length) {
+			appendDocLine(container, 0);
+			container.setAttribute("data-next-index", "1");
+			return;
+		}
+		const input = rows[rows.length - 1].querySelector(".combo__input");
+		if (input && input.value.trim() !== "") {
+			let idx = parseInt(container.getAttribute("data-next-index") || "", 10);
+			if (Number.isNaN(idx)) idx = rows.length;
+			appendDocLine(container, idx);
+			container.setAttribute("data-next-index", String(idx + 1));
+		}
+	}
+
+	function renumberDocLines(container) {
+		container.querySelectorAll("[data-line]").forEach(function (row, i) {
+			const title = row.querySelector("[data-line-title]");
+			if (title) title.textContent = "Line " + (i + 1);
+		});
 	}
 
 	document.addEventListener("input", function (e) {
 		const combo = comboOf(e.target);
-		if (combo && e.target.classList.contains("combo__input")) openList(combo);
+		if (combo && e.target.classList.contains("combo__input")) {
+			openList(combo);
+			// Typing a product into the last line row grows a new row.
+			const lines = combo.closest("[data-lines]");
+			if (lines) ensureDocLine(lines);
+		}
 	});
 
 	document.addEventListener("click", function (e) {
@@ -124,6 +176,27 @@
 				setExpanded(c, false);
 			});
 		}
+	});
+
+	// Removing a document line row. The last remaining row is cleared
+	// instead of removed so the form always submits at least one row.
+	document.addEventListener("click", function (e) {
+		const btn = e.target.closest("[data-remove-line]");
+		if (!btn) return;
+		const row = btn.closest("[data-line]");
+		const container = btn.closest("[data-lines]");
+		if (!row || !container) return;
+		if (container.querySelectorAll("[data-line]").length <= 1) {
+			const input = row.querySelector(".combo__input");
+			if (input) input.value = "";
+			const hid = row.querySelector('input[type="hidden"]');
+			if (hid) hid.value = "";
+			const price = row.querySelector("[data-price-input]");
+			if (price) price.value = "";
+			return;
+		}
+		row.remove();
+		renumberDocLines(container);
 	});
 
 	document.addEventListener("keydown", function (e) {

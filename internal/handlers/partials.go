@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/neo/goinvoice/internal/db/sqlc"
 	"github.com/neo/goinvoice/internal/invoicer"
 	"github.com/neo/goinvoice/internal/store"
 )
@@ -82,7 +83,7 @@ func (h *Handler) ProductModal(w http.ResponseWriter, r *http.Request) {
 // CustomerModal returns the customer edit form fragment for modal injection.
 func (h *Handler) CustomerModal(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	c, err := h.catalog.GetCustomer(r.Context(), id)
+	p, err := h.catalog.GetCustomerParty(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, store.ErrCustomerNotFound) {
 			writeError(w, http.StatusNotFound, store.ErrCustomerNotFound)
@@ -91,13 +92,13 @@ func (h *Handler) CustomerModal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	respondFragment(w, r, "#modal-body", CustomerForm(c, ""))
+	respondFragment(w, r, "#modal-body", CustomerForm(partyFormData(p, id, "")))
 }
 
 // SupplierModal returns the supplier edit form fragment for modal injection.
 func (h *Handler) SupplierModal(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	sp, err := h.catalog.GetSupplier(r.Context(), id)
+	p, err := h.catalog.GetSupplierParty(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, store.ErrSupplierNotFound) {
 			writeError(w, http.StatusNotFound, store.ErrSupplierNotFound)
@@ -106,13 +107,30 @@ func (h *Handler) SupplierModal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	respondFragment(w, r, "#modal-body", SupplierForm(sp, ""))
+	respondFragment(w, r, "#modal-body", SupplierForm(partyFormData(p, id, "")))
 }
 
-// NewCustomerModal handles GET /partials/customers/new: the compact create
-// form rendered into the modal from a document form.
+// NewCustomerModal handles GET /partials/customers/new: either the compact
+// form used from a document form (with ?for=route) or the full catalog form.
 func (h *Handler) NewCustomerModal(w http.ResponseWriter, r *http.Request) {
-	respondFragment(w, r, "#modal-body", CustomerCreateForm(CustomerFormData{
-		For: r.URL.Query().Get("for"),
-	}))
+	if forRoute := r.URL.Query().Get("for"); forRoute != "" {
+		respondFragment(w, r, "#modal-body", CustomerCreateForm(CustomerFormData{For: forRoute}))
+		return
+	}
+	respondFragment(w, r, "#modal-body", CustomerForm(partyFormData(nil, "", "")))
+}
+
+// NewSupplierModal handles GET /partials/suppliers/new: either the compact
+// form used from a document form (with ?for=route) or the full catalog form.
+func (h *Handler) NewSupplierModal(w http.ResponseWriter, r *http.Request) {
+	if forRoute := r.URL.Query().Get("for"); forRoute != "" {
+		respondFragment(w, r, "#modal-body", SupplierCreateForm(CustomerFormData{For: forRoute}))
+		return
+	}
+	respondFragment(w, r, "#modal-body", SupplierForm(partyFormData(nil, "", "")))
+}
+
+// NewProductModal handles GET /partials/products/new.
+func (h *Handler) NewProductModal(w http.ResponseWriter, r *http.Request) {
+	respondFragment(w, r, "#modal-body", ProductForm(sqlc.Product{}, ""))
 }

@@ -43,6 +43,61 @@ duplicate `ref` → `409`). `POST /products/{id}` updates,
 per row with inline delete. Customers and suppliers expose the same
 CRUD shape under `/customers` and `/suppliers` (unique `tax_code` → `409`).
 
+### Catalog parties
+
+Customers and suppliers store the full GOBL `org.Party` shape. Scalars
+(`uuid`, `$regime`, `label`, `name`, `alias`, `tax_id.{country,code,scheme,type}`,
+`agent_id`, `ext`, `meta`) live on the `customers`/`suppliers` rows. Repeated
+collections live in child tables with foreign keys and `ON DELETE CASCADE`:
+
+| Table               | GOBL field                   |
+| ------------------- | ---------------------------- |
+| `party_addresses`   | `addresses[]` (+ `coords`)   |
+| `party_emails`      | `emails[]`                   |
+| `party_telephones`  | `telephones[]`               |
+| `party_websites`    | `websites[]`                 |
+| `party_identities`  | `identities[]`               |
+| `party_endpoints`   | `endpoints[]`                |
+| `party_inboxes`     | `inboxes[]`                  |
+| `party_logos`       | `logos[]` (`org.Image`)      |
+| `party_people`      | `people[]` (`org.Person`)    |
+
+Each child row has nullable `customer_id`/`supplier_id` columns with a `CHECK`
+so it belongs to exactly one party. `people` keeps its own nested
+identities/addresses/emails/telephones/avatars as JSON text (third-level data,
+rarely queried directly).
+
+`POST /customers` and `POST /suppliers` accept either a full `org.Party` JSON
+document (nested collections included) or the flat HTML form (name, tax id,
+primary email/address, phone, website). When a document form selects a party
+from the catalog, the **whole party** is loaded into the invoice/order/…, so
+addresses, emails, identities, endpoints and logos flow through to GOBL and
+`gobl.html`.
+
+### Catalog products
+
+Products store the full GOBL `org.Item` shape. Scalars (`uuid`, `ref`, `key`,
+`name`, `description`, `currency`, `price`, `list`, `discount`, `per`, `unit`,
+`origin`, `ext`, `meta`) live on the `products` row. Repeated collections live
+in FK child tables with `ON DELETE CASCADE`:
+
+| Table                  | GOBL field       |
+| ---------------------- | ---------------- |
+| `product_identities`   | `identities[]`   |
+| `product_attributes`   | `attributes[]`   |
+| `product_images`       | `images[]`       |
+| `product_alt_prices`   | `alt_prices[]`   |
+
+`POST /products` accepts either a full `org.Item` JSON document or the flat
+HTML form. Selecting a product in a document line embeds the whole item
+(ref, description, unit, origin, identities, attributes, images, alt prices,
+extensions) while the line name/price remain editable.
+
+Customers, suppliers and products all use the same modal workflow as the bill
+documents: **New** opens a modal form, the row edit button opens the same form
+pre-filled, and non-JS clients can use `/customers/new`, `/suppliers/new` and
+`/products/new`.
+
 Pages are SPA-like via [Datastar](https://data-star.dev) v1
 (`internal/handlers/static/datastar.js`, vendored, no CDN): nav swaps
 `#main` in place, edits open in a modal, and creates/updates/deletes

@@ -17,9 +17,6 @@ const (
 	dsNavCustomers = "$nav = 'customers'; @get('/partials/customers')"
 	dsNavSuppliers = "$nav = 'suppliers'; @get('/partials/suppliers')"
 	dsNavProducts  = "$nav = 'products'; @get('/partials/products')"
-	dsPostCustomers = "@post('/customers', {contentType: 'form'})"
-	dsPostSuppliers = "@post('/suppliers', {contentType: 'form'})"
-	dsPostProducts  = "@post('/products', {contentType: 'form'})"
 )
 
 // dsNavActive marks the sidebar link of the current section.
@@ -30,12 +27,6 @@ func dsNavActive(section string) string {
 // dsEditGet returns the expression that loads an edit form into the modal.
 func dsEditGet(kind, id string) string {
 	return "$modalOpen = true; @get('/partials/" + kind + "/" + id + "/form')"
-}
-
-// dsUpdate returns the expression that submits an edit form, closes the
-// modal, and refreshes the section.
-func dsUpdate(kind, id string) string {
-	return "$modalOpen = false; @post('/" + kind + "/" + id + "', {contentType: 'form'})"
 }
 
 // dsDocSubmit returns the expression that submits a document form to the
@@ -55,9 +46,40 @@ func dsDocEdit(route, id, one string) string {
 	return "$modalTitle = 'Edit " + one + "'; $modalOpen = true; @get('/partials/" + route + "/" + id + "/edit')"
 }
 
+// dsCatalogNew opens the modal and loads the New catalog form.
+func dsCatalogNew(kind, one string) string {
+	return "$modalTitle = 'New " + one + "'; $modalOpen = true; @get('/partials/" + kind + "/new')"
+}
+
+// catalogAction returns the POST target for a catalog form.
+func catalogAction(kind, id string) string {
+	if id == "" {
+		return "/" + kind
+	}
+	return "/" + kind + "/" + id
+}
+
+// dsCatalogSubmit returns the Datastar expression that submits a catalog form.
+func dsCatalogSubmit(kind, id string) string {
+	return "@post('" + catalogAction(kind, id) + "', {contentType: 'form'})"
+}
+
+// catalogSubmitLabel returns the form button label.
+func catalogSubmitLabel(id, one string) string {
+	if id == "" {
+		return "Create " + one
+	}
+	return "Save"
+}
+
 // dsNewCustomer opens the "new customer" modal from a document form.
 func dsNewCustomer(route string) string {
 	return "$modalTitle = 'New Customer'; @get('/partials/customers/new?for=" + route + "')"
+}
+
+// dsNewSupplier opens the "new supplier" modal from a document form.
+func dsNewSupplier(route string) string {
+	return "$modalTitle = 'New Supplier'; @get('/partials/suppliers/new?for=" + route + "')"
 }
 
 // dsDelete returns the expression that confirms and deletes a row, then
@@ -72,26 +94,13 @@ templ CustomersSection(rows []sqlc.Customer, errMsg string) {
 			<h1 class="page-head__title">Customers</h1>
 			<p class="page-head__subtitle">Bill-to parties reused across invoices</p>
 		</div>
+		<div class="page-head__actions">
+			<a class="btn btn--primary" href="/customers/new" data-on:click__prevent={ dsCatalogNew("customers", "Customer") }>New</a>
+		</div>
 	</div>
 	if errMsg != "" {
 		<div class="alert alert--error" role="alert">{ errMsg }</div>
 	}
-	<div class="card">
-		<div class="card__header"><span class="card__title">Add customer</span></div>
-		<div class="card__body">
-			<form method="post" action="/customers" class="form-grid" data-on:submit__prevent={ dsPostCustomers }>
-				<div class="form-field"><label class="form-label" for="c-name">Name</label><input class="form-input" id="c-name" type="text" name="name" required/></div>
-				<div class="form-field"><label class="form-label" for="c-tax-country">Tax country</label><input class="form-input" id="c-tax-country" type="text" name="tax_country" placeholder="ES"/></div>
-				<div class="form-field"><label class="form-label" for="c-tax-code">Tax code</label><input class="form-input" id="c-tax-code" type="text" name="tax_code"/></div>
-				<div class="form-field"><label class="form-label" for="c-email">Email</label><input class="form-input" id="c-email" type="email" name="email"/></div>
-				<div class="form-field"><label class="form-label" for="c-address">Address</label><input class="form-input" id="c-address" type="text" name="address_line"/></div>
-				<div class="form-field"><label class="form-label" for="c-locality">Locality</label><input class="form-input" id="c-locality" type="text" name="locality"/></div>
-				<div class="form-field"><label class="form-label" for="c-postcode">Post code</label><input class="form-input" id="c-postcode" type="text" name="post_code"/></div>
-				<div class="form-field"><label class="form-label" for="c-country">Country</label><input class="form-input" id="c-country" type="text" name="country" placeholder="ES"/></div>
-				<div class="form-actions"><button type="submit" class="btn btn--primary">Add customer</button></div>
-			</form>
-		</div>
-	</div>
 	if len(rows) == 0 {
 		<div class="empty-stage">
 			<div class="empty-stage__icon"><i class="bx bx-user"></i></div>
@@ -140,24 +149,30 @@ templ CustomersPage(rows []sqlc.Customer, errMsg string) {
 	}
 }
 
-templ CustomerForm(c sqlc.Customer, errMsg string) {
-	if errMsg != "" {
-		<div class="alert alert--error" role="alert">{ errMsg }</div>
+templ CustomerForm(f PartyFormData) {
+	if f.Err != "" {
+		<div class="alert alert--error" role="alert">{ f.Err }</div>
 	}
-	<form method="post" action={ "/customers/" + c.ID } class="form-grid" data-on:submit__prevent={ dsUpdate("customers", c.ID) }>
-		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ c.Name } required/></div>
-		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ nsStr(c.TaxCountry) }/></div>
-		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ nsStr(c.TaxCode) }/></div>
-		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ nsStr(c.Email) }/></div>
-		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ nsStr(c.AddressLine) }/></div>
-		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ nsStr(c.Locality) }/></div>
-		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ nsStr(c.PostCode) }/></div>
-		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ nsStr(c.Country) }/></div>
-		<div class="form-actions"><button type="submit" class="btn btn--primary">Save</button></div>
+	<form method="post" action={ catalogAction("customers", f.ID) } class="form-grid" data-on:submit__prevent={ dsCatalogSubmit("customers", f.ID) }>
+		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ f.Name } required/></div>
+		<div class="form-field"><label class="form-label">Label</label><input class="form-input" type="text" name="label" value={ f.Label } placeholder="Customer"/></div>
+		<div class="form-field"><label class="form-label">Alias</label><input class="form-input" type="text" name="alias" value={ f.Alias }/></div>
+		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ f.TaxCountry } placeholder="ES"/></div>
+		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ f.TaxCode }/></div>
+		<div class="form-field"><label class="form-label">Tax scheme</label><input class="form-input" type="text" name="tax_scheme" value={ f.TaxScheme } placeholder="VAT"/></div>
+		<div class="form-field"><label class="form-label">Tax type</label><input class="form-input" type="text" name="tax_type" value={ f.TaxType }/></div>
+		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ f.Email }/></div>
+		<div class="form-field"><label class="form-label">Phone</label><input class="form-input" type="tel" name="phone" value={ f.Phone }/></div>
+		<div class="form-field"><label class="form-label">Website</label><input class="form-input" type="url" name="website" value={ f.Website }/></div>
+		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ f.Address }/></div>
+		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ f.Locality }/></div>
+		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ f.PostCode }/></div>
+		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ f.Country } placeholder="ES"/></div>
+		<div class="form-actions"><button type="submit" class="btn btn--primary">{ catalogSubmitLabel(f.ID, "customer") }</button></div>
 	</form>
 }
 
-templ CustomerEditPage(c sqlc.Customer, errMsg string) {
+templ CustomerEditPage(f PartyFormData) {
 	@Layout("edit customer · Ittisal Invoice", "customers") {
 		<div class="page-head">
 			<div class="page-head__copy">
@@ -166,7 +181,22 @@ templ CustomerEditPage(c sqlc.Customer, errMsg string) {
 		</div>
 		<div class="card">
 			<div class="card__body">
-				@CustomerForm(c, errMsg)
+				@CustomerForm(f)
+			</div>
+		</div>
+	}
+}
+
+templ CustomerNewPage(f PartyFormData) {
+	@Layout("new customer · Ittisal Invoice", "customers") {
+		<div class="page-head">
+			<div class="page-head__copy">
+				<h1 class="page-head__title">New customer</h1>
+			</div>
+		</div>
+		<div class="card">
+			<div class="card__body">
+				@CustomerForm(f)
 			</div>
 		</div>
 	}
@@ -178,26 +208,13 @@ templ SuppliersSection(rows []sqlc.Supplier, errMsg string) {
 			<h1 class="page-head__title">Suppliers</h1>
 			<p class="page-head__subtitle">Issuing parties for invoices</p>
 		</div>
+		<div class="page-head__actions">
+			<a class="btn btn--primary" href="/suppliers/new" data-on:click__prevent={ dsCatalogNew("suppliers", "Supplier") }>New</a>
+		</div>
 	</div>
 	if errMsg != "" {
 		<div class="alert alert--error" role="alert">{ errMsg }</div>
 	}
-	<div class="card">
-		<div class="card__header"><span class="card__title">Add supplier</span></div>
-		<div class="card__body">
-			<form method="post" action="/suppliers" class="form-grid" data-on:submit__prevent={ dsPostSuppliers }>
-				<div class="form-field"><label class="form-label" for="s-name">Name</label><input class="form-input" id="s-name" type="text" name="name" required/></div>
-				<div class="form-field"><label class="form-label" for="s-tax-country">Tax country</label><input class="form-input" id="s-tax-country" type="text" name="tax_country" placeholder="ES"/></div>
-				<div class="form-field"><label class="form-label" for="s-tax-code">Tax code</label><input class="form-input" id="s-tax-code" type="text" name="tax_code"/></div>
-				<div class="form-field"><label class="form-label" for="s-email">Email</label><input class="form-input" id="s-email" type="email" name="email"/></div>
-				<div class="form-field"><label class="form-label" for="s-address">Address</label><input class="form-input" id="s-address" type="text" name="address_line"/></div>
-				<div class="form-field"><label class="form-label" for="s-locality">Locality</label><input class="form-input" id="s-locality" type="text" name="locality"/></div>
-				<div class="form-field"><label class="form-label" for="s-postcode">Post code</label><input class="form-input" id="s-postcode" type="text" name="post_code"/></div>
-				<div class="form-field"><label class="form-label" for="s-country">Country</label><input class="form-input" id="s-country" type="text" name="country" placeholder="ES"/></div>
-				<div class="form-actions"><button type="submit" class="btn btn--primary">Add supplier</button></div>
-			</form>
-		</div>
-	</div>
 	if len(rows) == 0 {
 		<div class="empty-stage">
 			<div class="empty-stage__icon"><i class="bx bx-buildings"></i></div>
@@ -246,24 +263,30 @@ templ SuppliersPage(rows []sqlc.Supplier, errMsg string) {
 	}
 }
 
-templ SupplierForm(s sqlc.Supplier, errMsg string) {
-	if errMsg != "" {
-		<div class="alert alert--error" role="alert">{ errMsg }</div>
+templ SupplierForm(f PartyFormData) {
+	if f.Err != "" {
+		<div class="alert alert--error" role="alert">{ f.Err }</div>
 	}
-	<form method="post" action={ "/suppliers/" + s.ID } class="form-grid" data-on:submit__prevent={ dsUpdate("suppliers", s.ID) }>
-		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ s.Name } required/></div>
-		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ nsStr(s.TaxCountry) }/></div>
-		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ nsStr(s.TaxCode) }/></div>
-		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ nsStr(s.Email) }/></div>
-		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ nsStr(s.AddressLine) }/></div>
-		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ nsStr(s.Locality) }/></div>
-		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ nsStr(s.PostCode) }/></div>
-		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ nsStr(s.Country) }/></div>
-		<div class="form-actions"><button type="submit" class="btn btn--primary">Save</button></div>
+	<form method="post" action={ catalogAction("suppliers", f.ID) } class="form-grid" data-on:submit__prevent={ dsCatalogSubmit("suppliers", f.ID) }>
+		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ f.Name } required/></div>
+		<div class="form-field"><label class="form-label">Label</label><input class="form-input" type="text" name="label" value={ f.Label } placeholder="Supplier"/></div>
+		<div class="form-field"><label class="form-label">Alias</label><input class="form-input" type="text" name="alias" value={ f.Alias }/></div>
+		<div class="form-field"><label class="form-label">Tax country</label><input class="form-input" type="text" name="tax_country" value={ f.TaxCountry } placeholder="ES"/></div>
+		<div class="form-field"><label class="form-label">Tax code</label><input class="form-input" type="text" name="tax_code" value={ f.TaxCode }/></div>
+		<div class="form-field"><label class="form-label">Tax scheme</label><input class="form-input" type="text" name="tax_scheme" value={ f.TaxScheme } placeholder="VAT"/></div>
+		<div class="form-field"><label class="form-label">Tax type</label><input class="form-input" type="text" name="tax_type" value={ f.TaxType }/></div>
+		<div class="form-field"><label class="form-label">Email</label><input class="form-input" type="email" name="email" value={ f.Email }/></div>
+		<div class="form-field"><label class="form-label">Phone</label><input class="form-input" type="tel" name="phone" value={ f.Phone }/></div>
+		<div class="form-field"><label class="form-label">Website</label><input class="form-input" type="url" name="website" value={ f.Website }/></div>
+		<div class="form-field"><label class="form-label">Address</label><input class="form-input" type="text" name="address_line" value={ f.Address }/></div>
+		<div class="form-field"><label class="form-label">Locality</label><input class="form-input" type="text" name="locality" value={ f.Locality }/></div>
+		<div class="form-field"><label class="form-label">Post code</label><input class="form-input" type="text" name="post_code" value={ f.PostCode }/></div>
+		<div class="form-field"><label class="form-label">Country</label><input class="form-input" type="text" name="country" value={ f.Country } placeholder="ES"/></div>
+		<div class="form-actions"><button type="submit" class="btn btn--primary">{ catalogSubmitLabel(f.ID, "supplier") }</button></div>
 	</form>
 }
 
-templ SupplierEditPage(s sqlc.Supplier, errMsg string) {
+templ SupplierEditPage(f PartyFormData) {
 	@Layout("edit supplier · Ittisal Invoice", "suppliers") {
 		<div class="page-head">
 			<div class="page-head__copy">
@@ -272,7 +295,22 @@ templ SupplierEditPage(s sqlc.Supplier, errMsg string) {
 		</div>
 		<div class="card">
 			<div class="card__body">
-				@SupplierForm(s, errMsg)
+				@SupplierForm(f)
+			</div>
+		</div>
+	}
+}
+
+templ SupplierNewPage(f PartyFormData) {
+	@Layout("new supplier · Ittisal Invoice", "suppliers") {
+		<div class="page-head">
+			<div class="page-head__copy">
+				<h1 class="page-head__title">New supplier</h1>
+			</div>
+		</div>
+		<div class="card">
+			<div class="card__body">
+				@SupplierForm(f)
 			</div>
 		</div>
 	}
@@ -284,24 +322,13 @@ templ ProductsSection(rows []sqlc.Product, errMsg string) {
 			<h1 class="page-head__title">Products</h1>
 			<p class="page-head__subtitle">Catalog of billable items</p>
 		</div>
+		<div class="page-head__actions">
+			<a class="btn btn--primary" href="/products/new" data-on:click__prevent={ dsCatalogNew("products", "Product") }>New</a>
+		</div>
 	</div>
 	if errMsg != "" {
 		<div class="alert alert--error" role="alert">{ errMsg }</div>
 	}
-	<div class="card">
-		<div class="card__header"><span class="card__title">Add product</span></div>
-		<div class="card__body">
-			<form method="post" action="/products" class="form-grid" data-on:submit__prevent={ dsPostProducts }>
-				<div class="form-field"><label class="form-label" for="p-ref">Ref</label><input class="form-input" id="p-ref" type="text" name="ref" required/></div>
-				<div class="form-field"><label class="form-label" for="p-name">Name</label><input class="form-input" id="p-name" type="text" name="name" required/></div>
-				<div class="form-field"><label class="form-label" for="p-price">Price</label><input class="form-input" id="p-price" type="text" name="price" placeholder="100.00" required/></div>
-				<div class="form-field"><label class="form-label" for="p-currency">Currency</label><input class="form-input" id="p-currency" type="text" name="currency" value="EUR"/></div>
-				<div class="form-field"><label class="form-label" for="p-unit">Unit</label><input class="form-input" id="p-unit" type="text" name="unit" placeholder="hour"/></div>
-				<div class="form-field"><label class="form-label" for="p-description">Description</label><input class="form-input" id="p-description" type="text" name="description"/></div>
-				<div class="form-actions"><button type="submit" class="btn btn--primary">Add product</button></div>
-			</form>
-		</div>
-	</div>
 	if len(rows) == 0 {
 		<div class="empty-stage">
 			<div class="empty-stage__icon"><i class="bx bx-package"></i></div>
@@ -354,14 +381,19 @@ templ ProductForm(p sqlc.Product, errMsg string) {
 	if errMsg != "" {
 		<div class="alert alert--error" role="alert">{ errMsg }</div>
 	}
-	<form method="post" action={ "/products/" + p.ID } class="form-grid" data-on:submit__prevent={ dsUpdate("products", p.ID) }>
+	<form method="post" action={ catalogAction("products", p.ID) } class="form-grid" data-on:submit__prevent={ dsCatalogSubmit("products", p.ID) }>
 		<div class="form-field"><label class="form-label">Ref</label><input class="form-input" type="text" name="ref" value={ p.Ref } required/></div>
 		<div class="form-field"><label class="form-label">Name</label><input class="form-input" type="text" name="name" value={ p.Name } required/></div>
-		<div class="form-field"><label class="form-label">Price</label><input class="form-input" type="text" name="price" value={ p.Price } required/></div>
-		<div class="form-field"><label class="form-label">Currency</label><input class="form-input" type="text" name="currency" value={ p.Currency }/></div>
-		<div class="form-field"><label class="form-label">Unit</label><input class="form-input" type="text" name="unit" value={ nsStr(p.Unit) }/></div>
-		<div class="form-field"><label class="form-label">Description</label><input class="form-input" type="text" name="description" value={ nsStr(p.Description) }/></div>
-		<div class="form-actions"><button type="submit" class="btn btn--primary">Save</button></div>
+		<div class="form-field"><label class="form-label">Key</label><input class="form-input" type="text" name="key" value={ nsStr(p.Key) } placeholder="goods|services"/></div>
+		<div class="form-field"><label class="form-label">Price</label><input class="form-input" type="text" name="price" value={ p.Price } placeholder="100.00"/></div>
+		<div class="form-field"><label class="form-label">List price</label><input class="form-input" type="text" name="list" value={ nsStr(p.List) }/></div>
+		<div class="form-field"><label class="form-label">Discount</label><input class="form-input" type="text" name="discount" value={ nsStr(p.Discount) }/></div>
+		<div class="form-field"><label class="form-label">Per quantity</label><input class="form-input" type="text" name="per" value={ nsStr(p.Per) } placeholder="1"/></div>
+		<div class="form-field"><label class="form-label">Currency</label><input class="form-input" type="text" name="currency" value={ p.Currency } placeholder="EUR"/></div>
+		<div class="form-field"><label class="form-label">Unit</label><input class="form-input" type="text" name="unit" value={ nsStr(p.Unit) } placeholder="hour"/></div>
+		<div class="form-field"><label class="form-label">Origin</label><input class="form-input" type="text" name="origin" value={ nsStr(p.Origin) } placeholder="ES"/></div>
+		<div class="form-field form-field--full"><label class="form-label">Description</label><input class="form-input" type="text" name="description" value={ nsStr(p.Description) }/></div>
+		<div class="form-actions"><button type="submit" class="btn btn--primary">{ catalogSubmitLabel(p.ID, "product") }</button></div>
 	</form>
 }
 
@@ -375,6 +407,21 @@ templ ProductEditPage(p sqlc.Product, errMsg string) {
 		<div class="card">
 			<div class="card__body">
 				@ProductForm(p, errMsg)
+			</div>
+		</div>
+	}
+}
+
+templ ProductNewPage(p sqlc.Product) {
+	@Layout("new product · Ittisal Invoice", "products") {
+		<div class="page-head">
+			<div class="page-head__copy">
+				<h1 class="page-head__title">New product</h1>
+			</div>
+		</div>
+		<div class="card">
+			<div class="card__body">
+				@ProductForm(p, "")
 			</div>
 		</div>
 	}
@@ -408,6 +455,38 @@ templ CustomerCreateForm(f CustomerFormData) {
 		</div>
 		<div class="form-actions">
 			<button type="submit" class="btn btn--primary">Create customer</button>
+		</div>
+	</form>
+}
+
+// SupplierCreateForm renders the compact "new supplier" form used from the
+// document modal. On success the server re-renders the document form with
+// the new supplier selected.
+templ SupplierCreateForm(f CustomerFormData) {
+	if f.Err != "" {
+		<div class="alert alert--error" role="alert">{ f.Err }</div>
+	}
+	<form method="post" action="/suppliers" class="form-grid" data-on:submit__prevent="@post('/suppliers', {contentType: 'form'})">
+		<input type="hidden" name="modal" value="1"/>
+		<input type="hidden" name="for" value={ f.For }/>
+		<div class="form-field form-field--full">
+			<label class="form-label" for="ns-name">Name</label>
+			<input class="form-input" id="ns-name" type="text" name="name" value={ f.Name } required/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="ns-country">Tax country</label>
+			<input class="form-input" id="ns-country" type="text" name="tax_country" value={ f.TaxCountry } placeholder="ES"/>
+		</div>
+		<div class="form-field">
+			<label class="form-label" for="ns-code">Tax ID</label>
+			<input class="form-input" id="ns-code" type="text" name="tax_code" value={ f.TaxCode } placeholder="B98602642"/>
+		</div>
+		<div class="form-field form-field--full">
+			<label class="form-label" for="ns-email">Email</label>
+			<input class="form-input" id="ns-email" type="email" name="email" value={ f.Email }/>
+		</div>
+		<div class="form-actions">
+			<button type="submit" class="btn btn--primary">Create supplier</button>
 		</div>
 	</form>
 }

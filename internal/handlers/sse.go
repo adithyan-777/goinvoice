@@ -65,3 +65,12 @@ func respondFragment(w http.ResponseWriter, r *http.Request, selector string, c 
 	sseElements(w, r, selector, "inner", c)
 	sseFlush(w)
 }
+
+// respondSection closes any open modal and swaps the #main content in place.
+// It is used after successful catalog create/update submissions.
+func respondSection(w http.ResponseWriter, r *http.Request, c templ.Component) {
+	sseBegin(w)
+	sseSignals(w, `{"modalOpen": false}`)
+	sseElements(w, r, "#main", "inner", c)
+	sseFlush(w)
+}

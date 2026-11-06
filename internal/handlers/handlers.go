@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,6 +19,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/invopop/gobl/cbc"
+	"github.com/invopop/gobl/currency"
+	"github.com/invopop/gobl/l10n"
+	"github.com/invopop/gobl/num"
+	"github.com/invopop/gobl/org"
+	"github.com/invopop/gobl/tax"
 
 	"github.com/neo/goinvoice/internal/db/sqlc"
 	"github.com/neo/goinvoice/internal/invoicer"
@@ -40,18 +47,21 @@ func (h *Handler) Register(r chi.Router) {
 	r.Get("/", h.Index)
 	r.Get("/customers", h.Customers)
 	r.Post("/customers", h.CreateCustomer)
+	r.Get("/customers/new", h.NewCustomerPage)
 	r.Get("/customers/{id}/edit", h.EditCustomerForm)
 	r.Post("/customers/{id}", h.UpdateCustomer)
 	r.Post("/customers/{id}/delete", h.DeleteCustomerForm)
 	r.Delete("/customers/{id}", h.DeleteCustomer)
 	r.Get("/suppliers", h.Suppliers)
 	r.Post("/suppliers", h.CreateSupplier)
+	r.Get("/suppliers/new", h.NewSupplierPage)
 	r.Get("/suppliers/{id}/edit", h.EditSupplierForm)
 	r.Post("/suppliers/{id}", h.UpdateSupplier)
 	r.Post("/suppliers/{id}/delete", h.DeleteSupplierForm)
 	r.Delete("/suppliers/{id}", h.DeleteSupplier)
 	r.Get("/products", h.Products)
 	r.Post("/products", h.CreateProduct)
+	r.Get("/products/new", h.NewProductPage)
 	r.Get("/products/{id}/edit", h.EditProductForm)
 	r.Post("/products/{id}", h.UpdateProduct)
 	r.Post("/products/{id}/delete", h.DeleteProductForm)
@@ -74,9 +84,11 @@ func (h *Handler) Register(r chi.Router) {
 	r.Get("/partials/customers", h.CustomersPartial)
 	r.Get("/partials/suppliers", h.SuppliersPartial)
 	r.Get("/partials/products", h.ProductsPartial)
+	r.Get("/partials/products/new", h.NewProductModal)
 	r.Get("/partials/products/{id}/form", h.ProductModal)
 	r.Get("/partials/customers/new", h.NewCustomerModal)
 	r.Get("/partials/customers/{id}/form", h.CustomerModal)
+	r.Get("/partials/suppliers/new", h.NewSupplierModal)
 	r.Get("/partials/suppliers/{id}/form", h.SupplierModal)
 	r.Route("/invoices", func(r chi.Router) {
 		r.Post("/", h.Create)
@@ -362,6 +374,31 @@ func (h *Handler) Products(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// NewCustomerPage handles GET /customers/new (no-JS fallback for the modal).
+func (h *Handler) NewCustomerPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := CustomerNewPage(partyFormData(nil, "", r.URL.Query().Get("error"))).Render(r.Context(), w); err != nil {
+		log.Printf("render new customer: %v", err)
+	}
+}
+
+// NewSupplierPage handles GET /suppliers/new (no-JS fallback for the modal).
+func (h *Handler) NewSupplierPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := SupplierNewPage(partyFormData(nil, "", r.URL.Query().Get("error"))).Render(r.Context(), w); err != nil {
+		log.Printf("render new supplier: %v", err)
+	}
+}
+
+// NewProductPage handles GET /products/new (no-JS fallback for the modal).
+func (h *Handler) NewProductPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	it := &org.Item{Currency: "EUR"}
+	if err := ProductNewPage(productRow(it, "")).Render(r.Context(), w); err != nil {
+		log.Printf("render new product: %v", err)
+	}
+}
+
 // nullIfEmpty maps an optional form value to a nullable column.
 func nullIfEmpty(s string) sql.NullString {
 	if s == "" {
@@ -375,55 +412,119 @@ func productConflict(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint")
 }
 
-var errProductRequired = errors.New("ref, name and price are required")
+var errProductRequired = errors.New("ref and name are required")
 
-// decodeProduct reads product fields from a JSON body or form values,
-// trimming whitespace and defaulting empty currency to EUR.
-func decodeProduct(r *http.Request) (sqlc.CreateProductParams, bool, error) {
-	var p sqlc.CreateProductParams
+// decodeProduct reads a GOBL org.Item from a JSON body (full shape) or from
+// the flat product form (ref, name, description, pricing, unit, origin).
+func decodeProduct(r *http.Request) (*org.Item, bool, error) {
 	isJSON := strings.HasPrefix(r.Header.Get("Content-Type"), "application/json")
-
 	if isJSON {
-		var body struct {
-			Ref         string `json:"ref"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			Price       string `json:"price"`
-			Currency    string `json:"currency"`
-			Unit        string `json:"unit"`
+		it := new(org.Item)
+		if err := json.NewDecoder(r.Body).Decode(it); err != nil {
+			return nil, true, err
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			return p, true, err
+		if strings.TrimSpace(it.Ref.String()) == "" || strings.TrimSpace(it.Name) == "" {
+			return it, true, errProductRequired
 		}
-		p = sqlc.CreateProductParams{
-			Ref:         strings.TrimSpace(body.Ref),
-			Name:        strings.TrimSpace(body.Name),
-			Description: nullIfEmpty(strings.TrimSpace(body.Description)),
-			Price:       strings.TrimSpace(body.Price),
-			Currency:    strings.TrimSpace(body.Currency),
-			Unit:        nullIfEmpty(strings.TrimSpace(body.Unit)),
-		}
-	} else {
-		if err := r.ParseForm(); err != nil {
-			return p, false, err
-		}
-		p = sqlc.CreateProductParams{
-			Ref:         strings.TrimSpace(r.FormValue("ref")),
-			Name:        strings.TrimSpace(r.FormValue("name")),
-			Description: nullIfEmpty(strings.TrimSpace(r.FormValue("description"))),
-			Price:       strings.TrimSpace(r.FormValue("price")),
-			Currency:    strings.TrimSpace(r.FormValue("currency")),
-			Unit:        nullIfEmpty(strings.TrimSpace(r.FormValue("unit"))),
-		}
+		return it, true, nil
 	}
+	if err := r.ParseForm(); err != nil {
+		return nil, false, err
+	}
+	it, err := productFromForm(r)
+	if err != nil {
+		return it, false, err
+	}
+	if strings.TrimSpace(it.Ref.String()) == "" || strings.TrimSpace(it.Name) == "" {
+		return it, false, errProductRequired
+	}
+	return it, false, nil
+}
 
-	if p.Ref == "" || p.Name == "" || p.Price == "" {
-		return p, isJSON, errProductRequired
+func formAmount(v string) (*num.Amount, error) {
+	if v == "" {
+		return nil, nil
 	}
-	if p.Currency == "" {
-		p.Currency = "EUR"
+	a, err := num.AmountFromString(v)
+	if err != nil {
+		return nil, err
 	}
-	return p, isJSON, nil
+	return &a, nil
+}
+
+// productFromForm maps the flat product form onto GOBL org.Item fields.
+func productFromForm(r *http.Request) (*org.Item, error) {
+	get := func(k string) string { return strings.TrimSpace(r.FormValue(k)) }
+	it := &org.Item{
+		Ref:         cbc.Code(get("ref")),
+		Key:         cbc.Key(get("key")),
+		Name:        get("name"),
+		Description: get("description"),
+		Currency:    currency.Code(get("currency")),
+		Unit:        cbc.Key(get("unit")),
+		Origin:      l10n.ISOCountryCode(get("origin")),
+	}
+	var err error
+	if it.Price, err = formAmount(get("price")); err != nil {
+		return it, fmt.Errorf("price: %w", err)
+	}
+	if it.List, err = formAmount(get("list")); err != nil {
+		return it, fmt.Errorf("list: %w", err)
+	}
+	if it.Discount, err = formAmount(get("discount")); err != nil {
+		return it, fmt.Errorf("discount: %w", err)
+	}
+	if it.Per, err = formAmount(get("per")); err != nil {
+		return it, fmt.Errorf("per: %w", err)
+	}
+	if it.Currency == "" {
+		it.Currency = "EUR"
+	}
+	return it, nil
+}
+
+// applyProductForm merges the flat form scalars into an existing item while
+// preserving collections created through the JSON API.
+func applyProductForm(dst, src *org.Item) {
+	dst.Ref, dst.Key, dst.Name, dst.Description = src.Ref, src.Key, src.Name, src.Description
+	dst.Currency, dst.Price = src.Currency, src.Price
+	dst.List, dst.Discount, dst.Per = src.List, src.Discount, src.Per
+	dst.Unit, dst.Origin = src.Unit, src.Origin
+}
+
+// productRow projects an item into the sqlc.Product shape used to re-render
+// the form after a validation error.
+func productRow(it *org.Item, id string) sqlc.Product {
+	if it == nil {
+		it = &org.Item{}
+	}
+	amt := func(a *num.Amount) sql.NullString {
+		if a == nil {
+			return sql.NullString{}
+		}
+		return nullIfEmpty(a.String())
+	}
+	return sqlc.Product{
+		ID:          id,
+		Ref:         it.Ref.String(),
+		Name:        it.Name,
+		Description: nullIfEmpty(it.Description),
+		Price:       amountOrEmpty(it.Price),
+		Currency:    it.Currency.String(),
+		Unit:        nullIfEmpty(it.Unit.String()),
+		Key:         nullIfEmpty(it.Key.String()),
+		List:        amt(it.List),
+		Discount:    amt(it.Discount),
+		Per:         amt(it.Per),
+		Origin:      nullIfEmpty(it.Origin.String()),
+	}
+}
+
+func amountOrEmpty(a *num.Amount) string {
+	if a == nil {
+		return ""
+	}
+	return a.String()
 }
 
 // wantsFragment reports whether the request came from Datastar (SPA mode)
@@ -432,34 +533,37 @@ func wantsFragment(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Accept"), "text/event-stream")
 }
 
-// renderCustomersFragment writes the customers section for Datastar swaps.
+// renderCustomersFragment swaps the customers section in place and closes any
+// open modal (used by the modal create/edit forms).
 func (h *Handler) renderCustomersFragment(w http.ResponseWriter, r *http.Request, errMsg string) {
 	rows, err := h.catalog.ListCustomers(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	respondFragment(w, r, "#main", CustomersSection(rows, errMsg))
+	respondSection(w, r, CustomersSection(rows, errMsg))
 }
 
-// renderSuppliersFragment writes the suppliers section for Datastar swaps.
+// renderSuppliersFragment swaps the suppliers section in place and closes any
+// open modal (used by the modal create/edit forms).
 func (h *Handler) renderSuppliersFragment(w http.ResponseWriter, r *http.Request, errMsg string) {
 	rows, err := h.catalog.ListSuppliers(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	respondFragment(w, r, "#main", SuppliersSection(rows, errMsg))
+	respondSection(w, r, SuppliersSection(rows, errMsg))
 }
 
-// renderProductsFragment writes the products section for Datastar swaps.
+// renderProductsFragment swaps the products section in place and closes any
+// open modal (used by the modal create/edit forms).
 func (h *Handler) renderProductsFragment(w http.ResponseWriter, r *http.Request, errMsg string) {
 	rows, err := h.catalog.ListProducts(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
-	respondFragment(w, r, "#main", ProductsSection(rows, errMsg))
+	respondSection(w, r, ProductsSection(rows, errMsg))
 }
 
 // conflictMessage maps UNIQUE violations to a friendly duplicate message.
@@ -477,22 +581,22 @@ func conflictMessage(err error, dup string) string {
 // plain form posts follow PRG with redirects. JSON clients get
 // 201/400/409 JSON.
 func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
-	p, isJSON, err := decodeProduct(r)
+	it, isJSON, err := decodeProduct(r)
 	if err != nil {
 		if isJSON {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
 		if wantsFragment(r) {
-			h.renderProductsFragment(w, r, err.Error())
+			respondFragment(w, r, "#modal-body", ProductForm(productRow(it, ""), err.Error()))
 			return
 		}
 		http.Redirect(w, r, "/products?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-	p.ID = uuid.NewString()
+	id := uuid.NewString()
 
-	if err := h.catalog.CreateProduct(r.Context(), p); err != nil {
+	if err := h.catalog.SaveProduct(r.Context(), id, it); err != nil {
 		if isJSON {
 			if productConflict(err) {
 				writeError(w, http.StatusConflict, errors.New("product ref already exists"))
@@ -503,7 +607,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := conflictMessage(err, "product ref already exists")
 		if wantsFragment(r) {
-			h.renderProductsFragment(w, r, msg)
+			respondFragment(w, r, "#modal-body", ProductForm(productRow(it, ""), msg))
 			return
 		}
 		http.Redirect(w, r, "/products?error="+url.QueryEscape(msg), http.StatusSeeOther)
@@ -511,7 +615,7 @@ func (h *Handler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if isJSON {
-		writeJSON(w, http.StatusCreated, map[string]any{"id": p.ID, "ref": p.Ref})
+		writeJSON(w, http.StatusCreated, map[string]any{"id": id, "ref": it.Ref.String()})
 		return
 	}
 	if wantsFragment(r) {
@@ -546,30 +650,44 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	editURL := "/products/" + id + "/edit"
 
-	p, isJSON, err := decodeProduct(r)
+	it, isJSON, err := decodeProduct(r)
 	if err != nil {
 		if isJSON {
 			writeError(w, http.StatusBadRequest, err)
 			return
 		}
 		if wantsFragment(r) {
-			h.renderProductsFragment(w, r, err.Error())
+			respondFragment(w, r, "#modal-body", ProductForm(productRow(it, id), err.Error()))
 			return
 		}
 		http.Redirect(w, r, editURL+"?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 
-	n, err := h.catalog.UpdateProduct(r.Context(), sqlc.UpdateProductParams{
-		Ref:         p.Ref,
-		Name:        p.Name,
-		Description: p.Description,
-		Price:       p.Price,
-		Currency:    p.Currency,
-		Unit:        p.Unit,
-		ID:          id,
-	})
+	existing, err := h.catalog.GetProductItem(r.Context(), id)
 	if err != nil {
+		if errors.Is(err, store.ErrProductNotFound) {
+			if isJSON {
+				writeError(w, http.StatusNotFound, store.ErrProductNotFound)
+				return
+			}
+			if wantsFragment(r) {
+				h.renderProductsFragment(w, r, "product not found")
+				return
+			}
+			http.Redirect(w, r, "/products?error="+url.QueryEscape("product not found"), http.StatusSeeOther)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	next := it
+	if !isJSON {
+		applyProductForm(existing, it)
+		next = existing
+	}
+	if err := h.catalog.SaveProduct(r.Context(), id, next); err != nil {
 		if isJSON {
 			if productConflict(err) {
 				writeError(w, http.StatusConflict, errors.New("product ref already exists"))
@@ -580,27 +698,15 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := conflictMessage(err, "product ref already exists")
 		if wantsFragment(r) {
-			h.renderProductsFragment(w, r, msg)
+			respondFragment(w, r, "#modal-body", ProductForm(productRow(it, id), msg))
 			return
 		}
 		http.Redirect(w, r, editURL+"?error="+url.QueryEscape(msg), http.StatusSeeOther)
 		return
 	}
-	if n == 0 {
-		if isJSON {
-			writeError(w, http.StatusNotFound, store.ErrProductNotFound)
-			return
-		}
-		if wantsFragment(r) {
-			h.renderProductsFragment(w, r, "product not found")
-			return
-		}
-		http.Redirect(w, r, "/products?error="+url.QueryEscape("product not found"), http.StatusSeeOther)
-		return
-	}
 
 	if isJSON {
-		writeJSON(w, http.StatusOK, map[string]any{"id": id, "ref": p.Ref})
+		writeJSON(w, http.StatusOK, map[string]any{"id": id, "ref": next.Ref.String()})
 		return
 	}
 	if wantsFragment(r) {
@@ -652,64 +758,105 @@ func (h *Handler) DeleteProductForm(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/products", http.StatusSeeOther)
 }
 
-// partyFields holds the shared customer/supplier form fields.
-type partyFields struct {
-	Name        string
-	TaxCountry  sql.NullString
-	TaxCode     sql.NullString
-	Email       sql.NullString
-	AddressLine sql.NullString
-	Locality    sql.NullString
-	PostCode    sql.NullString
-	Country     sql.NullString
-}
-
 var errPartyRequired = errors.New("name is required")
 
-// decodeParty reads customer/supplier fields from a JSON body or form values.
-func decodeParty(r *http.Request) (partyFields, bool, error) {
-	var raw struct {
-		Name        string `json:"name"`
-		TaxCountry  string `json:"tax_country"`
-		TaxCode     string `json:"tax_code"`
-		Email       string `json:"email"`
-		AddressLine string `json:"address_line"`
-		Locality    string `json:"locality"`
-		PostCode    string `json:"post_code"`
-		Country     string `json:"country"`
-	}
+// decodeParty reads a GOBL org.Party from a JSON body (full shape, including
+// nested collections) or from the flat catalog form (name, tax id, primary
+// email/address, phone, website).
+func decodeParty(r *http.Request) (*org.Party, bool, error) {
 	isJSON := strings.HasPrefix(r.Header.Get("Content-Type"), "application/json")
 	if isJSON {
-		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-			return partyFields{}, true, err
+		p := new(org.Party)
+		if err := json.NewDecoder(r.Body).Decode(p); err != nil {
+			return nil, true, err
 		}
-	} else {
-		if err := r.ParseForm(); err != nil {
-			return partyFields{}, false, err
+		if strings.TrimSpace(p.Name) == "" {
+			return nil, true, errPartyRequired
 		}
-		raw.Name = r.FormValue("name")
-		raw.TaxCountry = r.FormValue("tax_country")
-		raw.TaxCode = r.FormValue("tax_code")
-		raw.Email = r.FormValue("email")
-		raw.AddressLine = r.FormValue("address_line")
-		raw.Locality = r.FormValue("locality")
-		raw.PostCode = r.FormValue("post_code")
-		raw.Country = r.FormValue("country")
+		return p, true, nil
 	}
-	t := func(s string) sql.NullString { return nullIfEmpty(strings.TrimSpace(s)) }
-	if strings.TrimSpace(raw.Name) == "" {
-		return partyFields{}, isJSON, errPartyRequired
+	if err := r.ParseForm(); err != nil {
+		return nil, false, err
 	}
-	return partyFields{
-		Name:        strings.TrimSpace(raw.Name),
-		TaxCountry:  t(raw.TaxCountry),
-		TaxCode:     t(raw.TaxCode),
-		Email:       t(raw.Email),
-		AddressLine: t(raw.AddressLine),
-		Locality:    t(raw.Locality),
-		PostCode:    t(raw.PostCode),
-		Country:     t(raw.Country),
-	}, isJSON, nil
+	p := partyFromForm(r)
+	if strings.TrimSpace(p.Name) == "" {
+		return nil, false, errPartyRequired
+	}
+	return p, false, nil
+}
+
+// partyFromForm maps the flat catalog form onto the corresponding GOBL party
+// fields. Anything the form does not expose is left empty on create and
+// preserved on update by applyPartyForm.
+func partyFromForm(r *http.Request) *org.Party {
+	get := func(k string) string { return strings.TrimSpace(r.FormValue(k)) }
+	p := &org.Party{
+		Label: get("label"),
+		Name:  get("name"),
+		Alias: get("alias"),
+	}
+	if c, code, scheme, typ := get("tax_country"), get("tax_code"), get("tax_scheme"), get("tax_type"); c != "" || code != "" || scheme != "" || typ != "" {
+		p.TaxID = &tax.Identity{
+			Country: l10n.TaxCountryCode(c),
+			Code:    cbc.Code(code),
+			Scheme:  cbc.Code(scheme),
+			Type:    cbc.Key(typ),
+		}
+	}
+	if v := get("email"); v != "" {
+		p.Emails = []*org.Email{{Address: v}}
+	}
+	if v := get("phone"); v != "" {
+		p.Telephones = []*org.Telephone{{Number: v}}
+	}
+	if v := get("website"); v != "" {
+		p.Websites = []*org.Website{{URL: v}}
+	}
+	addr := &org.Address{
+		Street:   get("address_line"),
+		Locality: get("locality"),
+		Code:     cbc.Code(get("post_code")),
+		Country:  l10n.ISOCountryCode(get("country")),
+	}
+	if addr.Street != "" || addr.Locality != "" || addr.Code != "" || addr.Country != "" {
+		p.Addresses = []*org.Address{addr}
+	}
+	return p
+}
+
+// applyPartyForm merges the flat form values into an existing party. The form
+// only manages the scalar fields plus the first email/address/telephone/
+// website, so entries created through the JSON API are preserved.
+func applyPartyForm(dst, src *org.Party) {
+	dst.Label, dst.Name, dst.Alias, dst.TaxID = src.Label, src.Name, src.Alias, src.TaxID
+	if len(src.Emails) > 0 {
+		if len(dst.Emails) > 0 {
+			dst.Emails[0] = src.Emails[0]
+		} else {
+			dst.Emails = src.Emails
+		}
+	}
+	if len(src.Addresses) > 0 {
+		if len(dst.Addresses) > 0 {
+			dst.Addresses[0] = src.Addresses[0]
+		} else {
+			dst.Addresses = src.Addresses
+		}
+	}
+	if len(src.Telephones) > 0 {
+		if len(dst.Telephones) > 0 {
+			dst.Telephones[0] = src.Telephones[0]
+		} else {
+			dst.Telephones = src.Telephones
+		}
+	}
+	if len(src.Websites) > 0 {
+		if len(dst.Websites) > 0 {
+			dst.Websites[0] = src.Websites[0]
+		} else {
+			dst.Websites = src.Websites
+		}
+	}
 }
 
 // CreateCustomer handles POST /customers, from the HTML form and JSON API.
@@ -717,8 +864,11 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 	// When invoked from a document form's "New customer" modal, the created
 	// customer is fed straight back into the document form.
 	forRoute := r.FormValue("for")
-	renderCreateErr := func(msg string) {
-		if forRoute != "" && wantsFragment(r) {
+	renderCreateErr := func(p *org.Party, msg string) {
+		if !wantsFragment(r) {
+			return
+		}
+		if forRoute != "" {
 			respondFragment(w, r, "#modal-body", CustomerCreateForm(CustomerFormData{
 				For:        forRoute,
 				Name:       strings.TrimSpace(r.FormValue("name")),
@@ -729,7 +879,10 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 			}))
 			return
 		}
-		h.renderCustomersFragment(w, r, msg)
+		if p == nil {
+			p = partyFromForm(r)
+		}
+		respondFragment(w, r, "#modal-body", CustomerForm(partyFormData(p, "", msg)))
 	}
 
 	f, isJSON, err := decodeParty(r)
@@ -739,19 +892,14 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if wantsFragment(r) {
-			renderCreateErr(err.Error())
+			renderCreateErr(nil, err.Error())
 			return
 		}
 		http.Redirect(w, r, "/customers?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-	c := sqlc.CreateCustomerParams{
-		ID: uuid.NewString(), Name: f.Name,
-		TaxCountry: f.TaxCountry, TaxCode: f.TaxCode, Email: f.Email,
-		AddressLine: f.AddressLine, Locality: f.Locality,
-		PostCode: f.PostCode, Country: f.Country,
-	}
-	if err := h.catalog.CreateCustomer(r.Context(), c); err != nil {
+	id := uuid.NewString()
+	if err := h.catalog.SaveCustomer(r.Context(), id, f); err != nil {
 		if isJSON {
 			if productConflict(err) {
 				writeError(w, http.StatusConflict, errors.New("customer tax code already exists"))
@@ -762,18 +910,18 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := conflictMessage(err, "customer tax code already exists")
 		if wantsFragment(r) {
-			renderCreateErr(msg)
+			renderCreateErr(f, msg)
 			return
 		}
 		http.Redirect(w, r, "/customers?error="+url.QueryEscape(msg), http.StatusSeeOther)
 		return
 	}
 	if isJSON {
-		writeJSON(w, http.StatusCreated, map[string]any{"id": c.ID, "name": c.Name})
+		writeJSON(w, http.StatusCreated, map[string]any{"id": id, "name": f.Name})
 		return
 	}
 	if forRoute != "" && wantsFragment(r) {
-		h.renderDocFormModal(w, r, kindForRoute(forRoute), c.ID)
+		h.renderDocFormModal(w, r, kindForRoute(forRoute), id, "")
 		return
 	}
 	if wantsFragment(r) {
@@ -786,7 +934,7 @@ func (h *Handler) CreateCustomer(w http.ResponseWriter, r *http.Request) {
 // EditCustomerForm handles GET /customers/{id}/edit and renders the edit form.
 func (h *Handler) EditCustomerForm(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	c, err := h.catalog.GetCustomer(r.Context(), id)
+	c, err := h.catalog.GetCustomerParty(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, store.ErrCustomerNotFound) {
 			http.Redirect(w, r, "/customers?error="+url.QueryEscape("customer not found"), http.StatusSeeOther)
@@ -796,7 +944,7 @@ func (h *Handler) EditCustomerForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := CustomerEditPage(c, r.URL.Query().Get("error")).Render(r.Context(), w); err != nil {
+	if err := CustomerEditPage(partyFormData(c, id, r.URL.Query().Get("error"))).Render(r.Context(), w); err != nil {
 		log.Printf("render customer edit: %v", err)
 	}
 }
@@ -813,20 +961,35 @@ func (h *Handler) UpdateCustomer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if wantsFragment(r) {
-			h.renderCustomersFragment(w, r, err.Error())
+			respondFragment(w, r, "#modal-body", CustomerForm(partyFormData(f, id, err.Error())))
 			return
 		}
 		http.Redirect(w, r, editURL+"?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-	n, err := h.catalog.UpdateCustomer(r.Context(), sqlc.UpdateCustomerParams{
-		Name:       f.Name,
-		TaxCountry: f.TaxCountry, TaxCode: f.TaxCode, Email: f.Email,
-		AddressLine: f.AddressLine, Locality: f.Locality,
-		PostCode: f.PostCode, Country: f.Country,
-		ID: id,
-	})
+	existing, err := h.catalog.GetCustomerParty(r.Context(), id)
 	if err != nil {
+		if errors.Is(err, store.ErrCustomerNotFound) {
+			if isJSON {
+				writeError(w, http.StatusNotFound, store.ErrCustomerNotFound)
+				return
+			}
+			if wantsFragment(r) {
+				h.renderCustomersFragment(w, r, "customer not found")
+				return
+			}
+			http.Redirect(w, r, "/customers?error="+url.QueryEscape("customer not found"), http.StatusSeeOther)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	next := f
+	if !isJSON {
+		applyPartyForm(existing, f)
+		next = existing
+	}
+	if err := h.catalog.SaveCustomer(r.Context(), id, next); err != nil {
 		if isJSON {
 			if productConflict(err) {
 				writeError(w, http.StatusConflict, errors.New("customer tax code already exists"))
@@ -837,26 +1000,14 @@ func (h *Handler) UpdateCustomer(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := conflictMessage(err, "customer tax code already exists")
 		if wantsFragment(r) {
-			h.renderCustomersFragment(w, r, msg)
+			respondFragment(w, r, "#modal-body", CustomerForm(partyFormData(next, id, msg)))
 			return
 		}
 		http.Redirect(w, r, editURL+"?error="+url.QueryEscape(msg), http.StatusSeeOther)
 		return
 	}
-	if n == 0 {
-		if isJSON {
-			writeError(w, http.StatusNotFound, store.ErrCustomerNotFound)
-			return
-		}
-		if wantsFragment(r) {
-			h.renderCustomersFragment(w, r, "customer not found")
-			return
-		}
-		http.Redirect(w, r, "/customers?error="+url.QueryEscape("customer not found"), http.StatusSeeOther)
-		return
-	}
 	if isJSON {
-		writeJSON(w, http.StatusOK, map[string]any{"id": id, "name": f.Name})
+		writeJSON(w, http.StatusOK, map[string]any{"id": id, "name": next.Name})
 		return
 	}
 	if wantsFragment(r) {
@@ -910,6 +1061,30 @@ func (h *Handler) DeleteCustomerForm(w http.ResponseWriter, r *http.Request) {
 
 // CreateSupplier handles POST /suppliers, from the HTML form and JSON API.
 func (h *Handler) CreateSupplier(w http.ResponseWriter, r *http.Request) {
+	// When invoked from a document form's "New supplier" modal, the created
+	// supplier is fed straight back into the document form.
+	forRoute := r.FormValue("for")
+	renderCreateErr := func(p *org.Party, msg string) {
+		if !wantsFragment(r) {
+			return
+		}
+		if forRoute != "" {
+			respondFragment(w, r, "#modal-body", SupplierCreateForm(CustomerFormData{
+				For:        forRoute,
+				Name:       strings.TrimSpace(r.FormValue("name")),
+				TaxCountry: strings.TrimSpace(r.FormValue("tax_country")),
+				TaxCode:    strings.TrimSpace(r.FormValue("tax_code")),
+				Email:      strings.TrimSpace(r.FormValue("email")),
+				Err:        msg,
+			}))
+			return
+		}
+		if p == nil {
+			p = partyFromForm(r)
+		}
+		respondFragment(w, r, "#modal-body", SupplierForm(partyFormData(p, "", msg)))
+	}
+
 	f, isJSON, err := decodeParty(r)
 	if err != nil {
 		if isJSON {
@@ -917,19 +1092,14 @@ func (h *Handler) CreateSupplier(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if wantsFragment(r) {
-			h.renderSuppliersFragment(w, r, err.Error())
+			renderCreateErr(nil, err.Error())
 			return
 		}
 		http.Redirect(w, r, "/suppliers?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-	sp := sqlc.CreateSupplierParams{
-		ID: uuid.NewString(), Name: f.Name,
-		TaxCountry: f.TaxCountry, TaxCode: f.TaxCode, Email: f.Email,
-		AddressLine: f.AddressLine, Locality: f.Locality,
-		PostCode: f.PostCode, Country: f.Country,
-	}
-	if err := h.catalog.CreateSupplier(r.Context(), sp); err != nil {
+	id := uuid.NewString()
+	if err := h.catalog.SaveSupplier(r.Context(), id, f); err != nil {
 		if isJSON {
 			if productConflict(err) {
 				writeError(w, http.StatusConflict, errors.New("supplier tax code already exists"))
@@ -940,14 +1110,18 @@ func (h *Handler) CreateSupplier(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := conflictMessage(err, "supplier tax code already exists")
 		if wantsFragment(r) {
-			h.renderSuppliersFragment(w, r, msg)
+			renderCreateErr(f, msg)
 			return
 		}
 		http.Redirect(w, r, "/suppliers?error="+url.QueryEscape(msg), http.StatusSeeOther)
 		return
 	}
 	if isJSON {
-		writeJSON(w, http.StatusCreated, map[string]any{"id": sp.ID, "name": sp.Name})
+		writeJSON(w, http.StatusCreated, map[string]any{"id": id, "name": f.Name})
+		return
+	}
+	if forRoute != "" && wantsFragment(r) {
+		h.renderDocFormModal(w, r, kindForRoute(forRoute), "", id)
 		return
 	}
 	if wantsFragment(r) {
@@ -960,7 +1134,7 @@ func (h *Handler) CreateSupplier(w http.ResponseWriter, r *http.Request) {
 // EditSupplierForm handles GET /suppliers/{id}/edit and renders the edit form.
 func (h *Handler) EditSupplierForm(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	sp, err := h.catalog.GetSupplier(r.Context(), id)
+	sp, err := h.catalog.GetSupplierParty(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, store.ErrSupplierNotFound) {
 			http.Redirect(w, r, "/suppliers?error="+url.QueryEscape("supplier not found"), http.StatusSeeOther)
@@ -970,7 +1144,7 @@ func (h *Handler) EditSupplierForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := SupplierEditPage(sp, r.URL.Query().Get("error")).Render(r.Context(), w); err != nil {
+	if err := SupplierEditPage(partyFormData(sp, id, r.URL.Query().Get("error"))).Render(r.Context(), w); err != nil {
 		log.Printf("render supplier edit: %v", err)
 	}
 }
@@ -987,20 +1161,35 @@ func (h *Handler) UpdateSupplier(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if wantsFragment(r) {
-			h.renderSuppliersFragment(w, r, err.Error())
+			respondFragment(w, r, "#modal-body", SupplierForm(partyFormData(f, id, err.Error())))
 			return
 		}
 		http.Redirect(w, r, editURL+"?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-	n, err := h.catalog.UpdateSupplier(r.Context(), sqlc.UpdateSupplierParams{
-		Name:       f.Name,
-		TaxCountry: f.TaxCountry, TaxCode: f.TaxCode, Email: f.Email,
-		AddressLine: f.AddressLine, Locality: f.Locality,
-		PostCode: f.PostCode, Country: f.Country,
-		ID: id,
-	})
+	existing, err := h.catalog.GetSupplierParty(r.Context(), id)
 	if err != nil {
+		if errors.Is(err, store.ErrSupplierNotFound) {
+			if isJSON {
+				writeError(w, http.StatusNotFound, store.ErrSupplierNotFound)
+				return
+			}
+			if wantsFragment(r) {
+				h.renderSuppliersFragment(w, r, "supplier not found")
+				return
+			}
+			http.Redirect(w, r, "/suppliers?error="+url.QueryEscape("supplier not found"), http.StatusSeeOther)
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	next := f
+	if !isJSON {
+		applyPartyForm(existing, f)
+		next = existing
+	}
+	if err := h.catalog.SaveSupplier(r.Context(), id, next); err != nil {
 		if isJSON {
 			if productConflict(err) {
 				writeError(w, http.StatusConflict, errors.New("supplier tax code already exists"))
@@ -1011,26 +1200,14 @@ func (h *Handler) UpdateSupplier(w http.ResponseWriter, r *http.Request) {
 		}
 		msg := conflictMessage(err, "supplier tax code already exists")
 		if wantsFragment(r) {
-			h.renderSuppliersFragment(w, r, msg)
+			respondFragment(w, r, "#modal-body", SupplierForm(partyFormData(next, id, msg)))
 			return
 		}
 		http.Redirect(w, r, editURL+"?error="+url.QueryEscape(msg), http.StatusSeeOther)
 		return
 	}
-	if n == 0 {
-		if isJSON {
-			writeError(w, http.StatusNotFound, store.ErrSupplierNotFound)
-			return
-		}
-		if wantsFragment(r) {
-			h.renderSuppliersFragment(w, r, "supplier not found")
-			return
-		}
-		http.Redirect(w, r, "/suppliers?error="+url.QueryEscape("supplier not found"), http.StatusSeeOther)
-		return
-	}
 	if isJSON {
-		writeJSON(w, http.StatusOK, map[string]any{"id": id, "name": f.Name})
+		writeJSON(w, http.StatusOK, map[string]any{"id": id, "name": next.Name})
 		return
 	}
 	if wantsFragment(r) {

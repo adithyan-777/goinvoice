@@ -37,6 +37,7 @@ templ Layout(title string, nav string) {
 					root.setAttribute("data-sidebar-mode", prefs.sidebarMode || defaults.sidebarMode);
 				})();
 			</script>
+			<link rel="icon" href="data:,"/>
 			<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
 			<link href="https://cdn.jsdelivr.net/npm/@fontsource-variable/geist@5.2.5/index.min.css" rel="stylesheet"/>
 			<link href="https://cdn.jsdelivr.net/npm/@boxicons/core@1.0.6/fonts/basic/boxicons.min.css" rel="stylesheet"/>
@@ -50,7 +51,7 @@ templ Layout(title string, nav string) {
 			<link rel="stylesheet" href="/static/pattika/css/sidebar.css?v=3"/>
 			<link rel="stylesheet" href="/static/pattika/css/components.css?v=3"/>
 			<link rel="stylesheet" href="/static/pattika/css/utilities.css?v=3"/>
-			<link rel="stylesheet" href="/static/goinvoice.css?v=7"/>
+			<link rel="stylesheet" href="/static/goinvoice.css?v=10"/>
 			<script type="module" src="/static/datastar.js?v=2"></script>
 		</head>
 		<body class="app" data-signals={ "{modalOpen: false, modalTitle: 'Edit', toast: '', nav: '" + nav + "'}" } data-on:keydown__window="if (evt.key === 'Escape') $modalOpen = false">
@@ -143,7 +144,7 @@ templ Layout(title string, nav string) {
 				</div>
 			</div>
 			<script src="/static/pattika/js/theme.js?v=3"></script>
-			<script src="/static/goinvoice.js?v=3"></script>
+			<script src="/static/goinvoice.js?v=5"></script>
 		</body>
 	</html>
 }

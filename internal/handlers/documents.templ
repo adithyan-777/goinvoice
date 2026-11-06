@@ -100,6 +100,73 @@ templ DocumentsPage(route string, title string, one string, subtitle string, sam
 }
 
 
+// docProductLine renders one product line row. sfx is the numeric field-name
+// suffix (itoa(i)); the hidden <template> row uses "__IDX__", which the
+// client script replaces when appending rows.
+templ docProductLine(sfx string, title string, l DocLineForm, products []DocProduct) {
+	<div class="doc-form__group" data-line>
+		<div class="doc-form__group-title">
+			<span data-line-title>{ title }</span>
+			<button type="button" class="btn-icon btn-icon--danger" data-remove-line title="Remove line" aria-label="Remove line"><i class="bx bx-trash admin-icon admin-icon--18"></i></button>
+		</div>
+		<div class="doc-form__row">
+			<div class="form-field">
+				<label class="form-label">Product</label>
+				<div class="combo" data-combo data-product-combo>
+					<input
+						class="form-input combo__input"
+						type="text"
+						name={ "item_" + sfx }
+						value={ l.Item }
+						autocomplete="off"
+						placeholder="Search products…"
+						role="combobox"
+						aria-expanded="false"
+						aria-autocomplete="list"
+					/>
+					<input type="hidden" name={ "product_" + sfx } value={ l.ProductID }/>
+					<button type="button" class="combo__toggle" tabindex="-1" aria-label="Show products">
+						<i class="bx bx-chevron-down"></i>
+					</button>
+					<div class="combo__list" role="listbox" hidden>
+						for _, p := range products {
+							<button
+								type="button"
+								class="combo__option"
+								role="option"
+								data-id={ p.ID }
+								data-value={ p.Name }
+								data-price={ p.Price }
+							>
+								<span>{ p.Name }</span>
+								<span class="combo__meta">{ p.Price }</span>
+							</button>
+						}
+						<div class="combo__empty" hidden>No matching products</div>
+					</div>
+				</div>
+			</div>
+			<div class="form-field">
+				<label class="form-label">Quantity</label>
+				<input class="form-input" type="text" name={ "qty_" + sfx } value={ l.Qty } placeholder="1"/>
+			</div>
+			<div class="form-field">
+				<label class="form-label">Unit price</label>
+				<input class="form-input" data-price-input type="text" name={ "price_" + sfx } value={ l.Price } placeholder="0.00"/>
+			</div>
+			<div class="form-field">
+				<label class="form-label">VAT rate</label>
+				<select class="form-select" name={ "rate_" + sfx }>
+					<option value="">None</option>
+					for _, o := range vatRateOptions() {
+						<option value={ o.Value } selected?={ o.Value == l.Rate }>{ o.Label }</option>
+					}
+				</select>
+			</div>
+		</div>
+	</div>
+}
+
 // DocFormBody renders the structured New/Edit form for one bill document.
 // It is used both inside the modal (#modal-body) and on the standalone
 // /{route}/new and /{route}/{id}/edit pages.
@@ -140,21 +207,56 @@ templ DocFormBody(f DocForm) {
 		}
 
 		<div class="doc-form__section">Parties</div>
-		<div class="form-field">
+		<div class="form-field form-field--full">
 			<label class="form-label" for="doc-sup-name">Supplier</label>
-			<input class="form-input" id="doc-sup-name" type="text" name="sup_name" value={ f.SupName } required/>
-		</div>
-		<div class="form-field">
-			<label class="form-label" for="doc-sup-code">Supplier tax ID</label>
-			<input class="form-input" id="doc-sup-code" type="text" name="sup_code" value={ f.SupCode } placeholder="B98602642"/>
-		</div>
-		<div class="form-field">
-			<label class="form-label" for="doc-sup-country">Supplier tax country</label>
-			<input class="form-input" id="doc-sup-country" type="text" name="sup_country" value={ f.SupCountry } placeholder="ES"/>
+			<div class="party-picker">
+				<div class="combo" data-combo>
+					<input
+						class="form-input combo__input"
+						id="doc-sup-name"
+						type="text"
+						name="sup_name"
+						value={ f.SupName }
+						autocomplete="off"
+						placeholder="Search suppliers…"
+						role="combobox"
+						aria-expanded="false"
+						aria-autocomplete="list"
+						required
+					/>
+					<input type="hidden" name="sup_id" value={ f.SupID }/>
+					<input type="hidden" name="sup_code" value={ f.SupCode }/>
+					<input type="hidden" name="sup_country" value={ f.SupCountry }/>
+					<button type="button" class="combo__toggle" tabindex="-1" aria-label="Show suppliers">
+						<i class="bx bx-chevron-down"></i>
+					</button>
+					<div class="combo__list" role="listbox" hidden>
+						for _, s := range f.Suppliers {
+							<button
+								type="button"
+								class="combo__option"
+								role="option"
+								data-id={ s.ID }
+								data-value={ s.Name }
+								data-code={ s.Code }
+								data-country={ s.Country }
+							>
+								<span>{ s.Name }</span>
+								<span class="combo__meta">{ s.Code }</span>
+							</button>
+						}
+						<div class="combo__empty" hidden>No matching suppliers</div>
+					</div>
+				</div>
+				<button type="button" class="btn btn--ghost btn--sm" data-on:click__prevent={ dsNewSupplier(f.Route) }>
+					<i class="bx bx-plus admin-icon admin-icon--16"></i> New supplier
+				</button>
+			</div>
+			<p class="form-hint">Tax ID and country come from the selected supplier record.</p>
 		</div>
 		<div class="form-field form-field--full">
 			<label class="form-label" for="doc-cus-name">Customer</label>
-			<div class="customer-picker">
+			<div class="party-picker">
 				<div class="combo" data-combo>
 					<input
 						class="form-input combo__input"
@@ -201,34 +303,14 @@ templ DocFormBody(f DocForm) {
 
 		if f.Kind == "invoice" || f.Kind == "order" || f.Kind == "delivery" {
 			<div class="doc-form__section">Lines</div>
-			for i, l := range f.Lines {
-				<div class="doc-form__group">
-					<div class="doc-form__group-title">Line { i + 1 }</div>
-					<div class="doc-form__row">
-						<div class="form-field">
-							<label class="form-label">Item</label>
-							<input class="form-input" type="text" name={ "item_" + itoa(i) } value={ l.Item } placeholder="Description"/>
-						</div>
-						<div class="form-field">
-							<label class="form-label">Quantity</label>
-							<input class="form-input" type="text" name={ "qty_" + itoa(i) } value={ l.Qty } placeholder="1"/>
-						</div>
-						<div class="form-field">
-							<label class="form-label">Unit price</label>
-							<input class="form-input" type="text" name={ "price_" + itoa(i) } value={ l.Price } placeholder="0.00"/>
-						</div>
-						<div class="form-field">
-							<label class="form-label">VAT rate</label>
-							<select class="form-select" name={ "rate_" + itoa(i) }>
-								<option value="">None</option>
-								for _, o := range vatRateOptions() {
-									<option value={ o.Value } selected?={ o.Value == l.Rate }>{ o.Label }</option>
-								}
-							</select>
-						</div>
-					</div>
-				</div>
-			}
+			<div class="doc-lines" data-lines data-next-index={ len(f.Lines) }>
+				for i, l := range f.Lines {
+					@docProductLine(itoa(i), "Line "+itoa(i+1), l, f.Products)
+				}
+			</div>
+			<template data-line-template>
+				@docProductLine("__IDX__", "Line", DocLineForm{Qty: "1", Rate: "standard"}, f.Products)
+			</template>
 		}
 
 		if f.Kind == "payment" {

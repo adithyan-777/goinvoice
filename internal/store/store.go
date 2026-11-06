@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/invopop/gobl"
+	"github.com/invopop/gobl/org"
 
 	"github.com/neo/goinvoice/internal/db/sqlc"
 )
@@ -88,14 +89,14 @@ func (s *Store) GetCustomer(_ context.Context, _ string) (sqlc.Customer, error) 
 	return sqlc.Customer{}, ErrCustomerNotFound
 }
 
-// CreateCustomer is unsupported; the in-memory store holds no catalog.
-func (s *Store) CreateCustomer(_ context.Context, _ sqlc.CreateCustomerParams) error {
-	return errors.New("catalog is not supported by the in-memory store")
+// GetCustomerParty always misses; the in-memory store holds no catalog.
+func (s *Store) GetCustomerParty(_ context.Context, _ string) (*org.Party, error) {
+	return nil, ErrCustomerNotFound
 }
 
-// UpdateCustomer is unsupported; the in-memory store holds no catalog.
-func (s *Store) UpdateCustomer(_ context.Context, _ sqlc.UpdateCustomerParams) (int64, error) {
-	return 0, errors.New("catalog is not supported by the in-memory store")
+// SaveCustomer is unsupported; the in-memory store holds no catalog.
+func (s *Store) SaveCustomer(_ context.Context, _ string, _ *org.Party) error {
+	return errors.New("catalog is not supported by the in-memory store")
 }
 
 // DeleteCustomer is unsupported; the in-memory store holds no catalog.
@@ -113,14 +114,14 @@ func (s *Store) GetSupplier(_ context.Context, _ string) (sqlc.Supplier, error) 
 	return sqlc.Supplier{}, ErrSupplierNotFound
 }
 
-// CreateSupplier is unsupported; the in-memory store holds no catalog.
-func (s *Store) CreateSupplier(_ context.Context, _ sqlc.CreateSupplierParams) error {
-	return errors.New("catalog is not supported by the in-memory store")
+// GetSupplierParty always misses; the in-memory store holds no catalog.
+func (s *Store) GetSupplierParty(_ context.Context, _ string) (*org.Party, error) {
+	return nil, ErrSupplierNotFound
 }
 
-// UpdateSupplier is unsupported; the in-memory store holds no catalog.
-func (s *Store) UpdateSupplier(_ context.Context, _ sqlc.UpdateSupplierParams) (int64, error) {
-	return 0, errors.New("catalog is not supported by the in-memory store")
+// SaveSupplier is unsupported; the in-memory store holds no catalog.
+func (s *Store) SaveSupplier(_ context.Context, _ string, _ *org.Party) error {
+	return errors.New("catalog is not supported by the in-memory store")
 }
 
 // DeleteSupplier is unsupported; the in-memory store holds no catalog.
@@ -133,19 +134,19 @@ func (s *Store) ListProducts(_ context.Context) ([]sqlc.Product, error) {
 	return nil, nil
 }
 
-// CreateProduct is unsupported; the in-memory store holds no catalog.
-func (s *Store) CreateProduct(_ context.Context, _ sqlc.CreateProductParams) error {
-	return errors.New("catalog is not supported by the in-memory store")
-}
-
 // GetProduct always misses; the in-memory store holds no catalog.
 func (s *Store) GetProduct(_ context.Context, _ string) (sqlc.Product, error) {
 	return sqlc.Product{}, ErrProductNotFound
 }
 
-// UpdateProduct is unsupported; the in-memory store holds no catalog.
-func (s *Store) UpdateProduct(_ context.Context, _ sqlc.UpdateProductParams) (int64, error) {
-	return 0, errors.New("catalog is not supported by the in-memory store")
+// GetProductItem always misses; the in-memory store holds no catalog.
+func (s *Store) GetProductItem(_ context.Context, _ string) (*org.Item, error) {
+	return nil, ErrProductNotFound
+}
+
+// SaveProduct is unsupported; the in-memory store holds no catalog.
+func (s *Store) SaveProduct(_ context.Context, _ string, _ *org.Item) error {
+	return errors.New("catalog is not supported by the in-memory store")
 }
 
 // DeleteProduct is unsupported; the in-memory store holds no catalog.
